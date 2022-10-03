@@ -338,7 +338,7 @@ dependencies = [
 
 [[package]]
 name = "eva-sdk"
-version = "0.1.105"
+version = "0.1.106"
 dependencies = [
  "async-channel",
  "bmart",

@@ -1,12 +1,13 @@
 [package]
 name = "eva-sdk"
-version = "0.1.105"
+version = "0.1.106"
 edition = "2021"
 authors = ["Sergei S. <div@altertech.com>"]
 license = "Apache-2.0"
 description = "EVA ICS v4 SDK"
 readme = "README.md"
 keywords = ["eva-ics", "iot", "industrial", "scada", "cloud"]
+repository = "https://github.com/eva-ics/eva4-sdk"
 
 [package.metadata.docs.rs]
 features = ["full"]
