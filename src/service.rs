@@ -369,6 +369,7 @@ where
 {
     let op = Op::new(initial.startup_timeout());
     let eva_dir = initial.eva_dir().to_owned();
+    initial.init()?;
     if initial.is_mode_normal() {
         let shutdown_timeout = initial.shutdown_timeout();
         let mut stdin = tokio_fd::AsyncFd::try_from(libc::STDIN_FILENO)?;
