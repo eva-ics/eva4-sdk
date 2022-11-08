@@ -219,6 +219,7 @@ where
         client,
         initial.bus_queue_size(),
         initial.eva_log_level_filter(),
+        initial.call_tracing(),
     )
 }
 
