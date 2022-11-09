@@ -16,7 +16,8 @@ use eva_common::SLEEP_STEP;
 pub use eva_sdk_derive::svc_main;
 use lazy_static::lazy_static;
 use parking_lot::Mutex;
-use serde::Deserialize;
+use serde::{Deserialize, Deserializer};
+use std::future::Future;
 use std::io::Read;
 use std::path::Path;
 use std::sync::atomic;
@@ -24,7 +25,56 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::io::AsyncReadExt;
 use tokio::signal::unix::{signal, SignalKind};
+use tokio::task::futures::TaskLocalFuture;
 use tokio::time::sleep;
+use uuid::Uuid;
+
+fn deserialize_opt_uuid<'de, D>(deserializer: D) -> Result<Option<Uuid>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let val: Value = Deserialize::deserialize(deserializer)?;
+    if val == Value::Unit {
+        Ok(None)
+    } else {
+        Ok(Some(
+            Uuid::deserialize(val).map_err(serde::de::Error::custom)?,
+        ))
+    }
+}
+
+#[derive(Deserialize)]
+pub struct ExtendedParams {
+    #[serde(deserialize_with = "deserialize_opt_uuid")]
+    call_trace_id: Option<Uuid>,
+}
+
+pub fn process_extended_payload(full_payload: &[u8]) -> EResult<(&[u8], Option<ExtendedParams>)> {
+    if full_payload.len() > 4 && full_payload[0] == 0xc1 && full_payload[1] == 0xc1 {
+        let pos = usize::try_from(u16::from_le_bytes([full_payload[2], full_payload[3]]))? + 4;
+        if full_payload.len() < pos {
+            return Err(Error::invalid_data("invalid extended payload"));
+        }
+        let xp = &full_payload[4..pos];
+        return Ok((&full_payload[pos..], Some(unpack(xp)?)));
+    }
+    Ok((full_payload, None))
+}
+
+#[inline]
+pub fn svc_call_scope<F>(xp: Option<ExtendedParams>, f: F) -> TaskLocalFuture<Option<Uuid>, F>
+where
+    F: Future,
+{
+    eva_common::logger::CALL_TRACE_ID.scope(
+        if let Some(x) = xp {
+            x.call_trace_id
+        } else {
+            None
+        },
+        f,
+    )
+}
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Deserialize)]
 #[serde(rename_all = "lowercase")]

@@ -1,6 +1,6 @@
 [package]
 name = "eva-sdk"
-version = "0.1.110"
+version = "0.1.111"
 edition = "2021"
 authors = ["Sergei S. <div@altertech.com>"]
 license = "Apache-2.0"
@@ -17,7 +17,7 @@ features = ["full"]
 
 [dependencies]
 eva-sdk-derive = "0.1.2"
-uuid = { version = "1.1.2", features = ["serde", "v4"], optional = true }
+uuid = { version = "1.1.2", features = ["serde", "v4"] }
 busrt = { version = "0.3", features = ["full"] }
 serde = { version = "1.0.143", features = ["derive", "rc"] }
 tokio = { version = "1.20.1", features = ["full"] }
@@ -36,7 +36,7 @@ libc = "0.2.126"
 parking_lot = "0.12.1"
 
 [features]
-controller = ["uuid"]
+controller = []
 pubsub = []
 hmi = []
 http = ["hyper", "hyper-tls", "simple-pool"]

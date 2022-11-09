@@ -13,8 +13,10 @@ pub mod types;
 pub const EAPI_VERSION: u16 = 1;
 
 pub mod prelude {
+    pub use crate::service::process_extended_payload;
     pub use crate::service::safe_rpc_call;
     pub use crate::service::svc_block;
+    pub use crate::service::svc_call_scope;
     pub use crate::service::svc_handle_default_rpc;
     pub use crate::service::svc_init_logs;
     pub use crate::service::svc_is_active;
