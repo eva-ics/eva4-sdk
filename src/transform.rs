@@ -22,17 +22,17 @@ where
     for task in tasks {
         match task.func {
             Function::Multiply => {
-                n = n.multiply(*task.params.get(0).unwrap_or(&1.0))?;
+                n = n.multiply(*task.params.first().unwrap_or(&1.0))?;
             }
             Function::Divide => {
-                n = n.divide(*task.params.get(0).unwrap_or(&1.0))?;
+                n = n.divide(*task.params.first().unwrap_or(&1.0))?;
             }
             Function::Round => {
-                n = n.round_to(*task.params.get(0).unwrap_or(&0.0))?;
+                n = n.round_to(*task.params.first().unwrap_or(&0.0))?;
             }
             Function::CalcSpeed => {
                 n = n
-                    .calc_speed(oid, *task.params.get(0).unwrap_or(&0.0))?
+                    .calc_speed(oid, *task.params.first().unwrap_or(&0.0))?
                     .unwrap_or_default();
             }
             Function::Invert => {
