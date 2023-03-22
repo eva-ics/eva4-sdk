@@ -83,6 +83,16 @@ pub struct HistoricalState {
     pub set_time: f64,
 }
 
+impl HistoricalState {
+    pub fn na(timestamp: f64, need_status: bool, need_value: bool) -> Self {
+        Self {
+            status: if need_status { Some(Value::Unit) } else { None },
+            value: if need_value { Some(Value::Unit) } else { None },
+            set_time: timestamp,
+        }
+    }
+}
+
 /// result object for database services
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct CompactStateHistory {
@@ -181,6 +191,36 @@ impl Fill {
             Fill::Days(v) => u64::from(*v) * 86_400,
             Fill::Weeks(v) => u64::from(*v) * 604_800,
         }
+    }
+    pub fn fill_na(
+        &self,
+        t_start: f64,
+        t_end: f64,
+        limit: Option<usize>,
+        need_status: bool,
+        need_value: bool,
+    ) -> Vec<HistoricalState> {
+        let mut data = Vec::new();
+        let period = self.as_secs_f64();
+        if let Some(l) = limit {
+            let x = t_end % period;
+            let mut ts = if x == 0.0 { t_end } else { t_end - x };
+            let y = t_start % period;
+            let start = if y == 0.0 { t_start } else { t_start - x };
+            while ts >= start && data.len() < l {
+                data.push(HistoricalState::na(ts, need_status, need_value));
+                ts -= period;
+            }
+            data.reverse();
+        } else {
+            let x = t_start % period;
+            let mut ts = if x == 0.0 { t_start } else { t_start - x };
+            while ts <= t_end {
+                data.push(HistoricalState::na(ts, need_status, need_value));
+                ts += period;
+            }
+        }
+        data
     }
 }
 
