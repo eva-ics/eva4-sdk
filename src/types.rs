@@ -9,7 +9,9 @@ use std::str::FromStr;
 /// basic state object, usually collected from topics, ignores extra fields
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct State {
+    #[serde(alias = "s")]
     pub status: ItemStatus,
+    #[serde(alias = "v")]
     pub value: Option<Value>,
     #[serde(rename = "t")]
     pub set_time: f64,
@@ -19,8 +21,11 @@ pub struct State {
 /// via internal channels
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ItemState {
+    #[serde(alias = "i")]
     pub oid: OID,
+    #[serde(alias = "s")]
     pub status: ItemStatus,
+    #[serde(alias = "v")]
     pub value: Option<Value>,
     #[serde(rename = "t")]
     pub set_time: f64,
@@ -53,8 +58,11 @@ impl ItemState {
 /// channels
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ShortItemState {
+    #[serde(alias = "i")]
     pub oid: OID,
+    #[serde(alias = "s")]
     pub status: ItemStatus,
+    #[serde(alias = "v")]
     pub value: Option<Value>,
 }
 
@@ -75,9 +83,9 @@ impl ShortItemState {
 /// helper object for database services - status can be null/absent
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct HistoricalState {
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(alias = "s", skip_serializing_if = "Option::is_none")]
     pub status: Option<Value>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(alias = "v", skip_serializing_if = "Option::is_none")]
     pub value: Option<Value>,
     #[serde(rename = "t")]
     pub set_time: f64,
@@ -96,9 +104,9 @@ impl HistoricalState {
 /// result object for database services
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct CompactStateHistory {
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(alias = "s", skip_serializing_if = "Option::is_none")]
     pub status: Option<Vec<Value>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(alias = "v", skip_serializing_if = "Option::is_none")]
     pub value: Option<Vec<Value>>,
     #[serde(rename = "t")]
     pub set_time: Vec<f64>,
@@ -392,8 +400,11 @@ impl FromStr for StatePropExt {
 /// Full item state, used by replication services for bulk topics
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FullItemState {
+    #[serde(alias = "i")]
     pub oid: OID,
+    #[serde(alias = "s")]
     pub status: ItemStatus,
+    #[serde(alias = "v")]
     pub value: Value,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub act: Option<usize>,
@@ -450,8 +461,11 @@ impl From<FullItemState> for LocalStateEvent {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct FullRemoteItemState {
+    #[serde(alias = "i")]
     pub oid: OID,
+    #[serde(alias = "s")]
     pub status: ItemStatus,
+    #[serde(alias = "v")]
     pub value: Value,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub act: Option<usize>,
