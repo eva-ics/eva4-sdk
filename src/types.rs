@@ -200,6 +200,29 @@ impl Fill {
             Fill::Weeks(v) => u64::from(*v) * 604_800,
         }
     }
+    pub fn time_series(&self, t_start: f64, t_end: f64, limit: Option<usize>) -> Vec<f64> {
+        let mut data = Vec::new();
+        let period = self.as_secs_f64();
+        if let Some(l) = limit {
+            let x = t_end % period;
+            let mut ts = if x == 0.0 { t_end } else { t_end - x };
+            let y = t_start % period;
+            let start = if y == 0.0 { t_start } else { t_start - x };
+            while ts >= start && data.len() < l {
+                data.push(ts);
+                ts -= period;
+            }
+            data.reverse();
+        } else {
+            let x = t_start % period;
+            let mut ts = if x == 0.0 { t_start } else { t_start - x };
+            while ts <= t_end {
+                data.push(ts);
+                ts += period;
+            }
+        }
+        data
+    }
     pub fn fill_na(
         &self,
         t_start: f64,
