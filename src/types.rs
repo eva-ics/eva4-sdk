@@ -296,11 +296,15 @@ impl FromStr for Fill {
             Err(Error::invalid_params("invalid filling"))
         } else {
             macro_rules! ep {
-                ($res: expr) => {
-                    $res.map_err(|e| {
+                ($res: expr) => {{
+                    let res = $res.map_err(|e| {
                         Error::invalid_params(format!("unable to parse filling: {}", e))
-                    })?
-                };
+                    })?;
+                    if res == 0 {
+                        return Err(Error::invalid_params("fill numers can not be zero"));
+                    }
+                    res
+                }};
             }
             Ok(match &s[s.len() - 1..] {
                 "S" => Fill::Seconds(ep!(s[..s.len() - 1].parse())),
