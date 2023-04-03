@@ -339,6 +339,12 @@ impl StateProp {
     }
 }
 
+impl fmt::Display for StateProp {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
+}
+
 impl<'de> Deserialize<'de> for StateProp {
     #[inline]
     fn deserialize<D>(deserializer: D) -> Result<StateProp, D::Error>
