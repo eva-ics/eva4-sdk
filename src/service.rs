@@ -418,6 +418,7 @@ where
     L: FnMut(services::Initial) -> LFut,
     LFut: std::future::Future<Output = EResult<()>>,
 {
+    eva_common::self_test();
     let op = Op::new(initial.startup_timeout());
     let eva_dir = initial.eva_dir().to_owned();
     initial.init()?;
