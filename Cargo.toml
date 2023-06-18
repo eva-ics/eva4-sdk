@@ -1,6 +1,6 @@
 [package]
 name = "eva-sdk"
-version = "0.2.10"
+version = "0.3.0"
 edition = "2021"
 authors = ["Serhij S. <div@altertech.com>"]
 license = "Apache-2.0"
@@ -21,7 +21,7 @@ uuid = { version = "1.1.2", features = ["serde", "v4"] }
 busrt = { version = "0.4", features = ["full"] }
 serde = { version = "1.0.143", features = ["derive", "rc"] }
 tokio = { version = "1.20.1", features = ["full"] }
-eva-common = { version = "0.2", features = ["acl", "events", "actions",
+eva-common = { version = "0.3", features = ["acl", "events", "actions",
   "bus-rpc", "services", "registry", "extended-value", "payload", "logger"] }
 log = "0.4.14"
 lazy_static = "1.4.0"
