@@ -135,7 +135,7 @@ impl Actt {
     /// Will panic if the internal mutexes are poisoned
     pub fn mark_killed(&self, oid: &OID) -> EResult<()> {
         if let Some(actions) = self.pending_by_oid.get(oid) {
-            for (_, a) in actions.lock().iter_mut() {
+            for a in actions.lock().values_mut() {
                 a.cancel();
             }
             Ok(())
