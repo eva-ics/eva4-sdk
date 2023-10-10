@@ -1,6 +1,8 @@
 pub mod bitman;
 #[cfg(feature = "controller")]
 pub mod controller;
+#[cfg(feature = "fs")]
+pub mod fs;
 #[cfg(feature = "hmi")]
 pub mod hmi;
 #[cfg(feature = "http")]
