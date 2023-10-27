@@ -198,7 +198,7 @@ pub async fn svc_wait_core(rpc: &RpcClient, timeout: Duration, wait_forever: boo
             }
         }
         tokio::time::sleep(SLEEP_STEP).await;
-        if !wait_forever && wait_until >= Instant::now() {
+        if !wait_forever && wait_until <= Instant::now() {
             return Err(Error::timeout());
         }
     }
