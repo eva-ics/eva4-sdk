@@ -503,6 +503,22 @@ impl From<FullItemState> for LocalStateEvent {
     }
 }
 
+/// Full item state with connected field
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FullItemStateConnected {
+    #[serde(alias = "i")]
+    pub oid: OID,
+    #[serde(alias = "s")]
+    pub status: ItemStatus,
+    #[serde(alias = "v")]
+    pub value: Value,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub act: Option<usize>,
+    pub ieid: IEID,
+    pub t: f64,
+    pub connected: bool,
+}
+
 /// Full item state for remote items, used by HMI services
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
