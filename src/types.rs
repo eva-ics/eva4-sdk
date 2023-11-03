@@ -80,6 +80,19 @@ impl ShortItemState {
     }
 }
 
+/// short item state, without set-time but with connected field, useful to check are collected
+/// items connected or keep the most recent known state
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct ShortItemStateConnected {
+    #[serde(alias = "i")]
+    pub oid: OID,
+    #[serde(alias = "s")]
+    pub status: ItemStatus,
+    #[serde(alias = "v")]
+    pub value: Option<Value>,
+    pub connected: bool,
+}
+
 /// helper object for database services - status can be null/absent
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct HistoricalState {
