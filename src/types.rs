@@ -314,7 +314,7 @@ impl FromStr for Fill {
                         Error::invalid_params(format!("unable to parse filling: {}", e))
                     })?;
                     if res == 0 {
-                        return Err(Error::invalid_params("fill numers can not be zero"));
+                        return Err(Error::invalid_params("fill numbers can not be zero"));
                     }
                     res
                 }};
