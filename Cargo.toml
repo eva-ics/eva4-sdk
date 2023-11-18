@@ -1,6 +1,6 @@
 [package]
 name = "eva-sdk"
-version = "0.3.6"
+version = "0.3.7"
 edition = "2021"
 authors = ["Serhij S. <div@altertech.com>"]
 license = "Apache-2.0"
@@ -10,10 +10,10 @@ keywords = ["eva-ics", "iot", "industrial", "scada", "cloud"]
 repository = "https://github.com/eva-ics/eva4-sdk"
 
 [package.metadata.docs.rs]
-features = ["full", "openssl/vendored"]
+features = ["full"]
 
 [package.metadata.playground]
-features = ["full", "openssl/vendored"]
+features = ["full"]
 
 [dependencies]
 eva-sdk-derive = "0.1.2"
