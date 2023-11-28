@@ -105,7 +105,12 @@ pub async fn list(
     absolute: bool,
 ) -> EResult<Vec<Entry>> {
     let mut entries = Vec::new();
-    list_entries_by_mask(path, masks, kind, &mut entries, recursive).await?;
+    if let Err(e) = list_entries_by_mask(path, masks, kind, &mut entries, recursive).await {
+        if e.kind() == std::io::ErrorKind::NotFound {
+            return Err(Error::not_found(path.to_string_lossy()));
+        }
+        return Err(e.into());
+    }
     let s = path.to_string_lossy();
     let mut result: Vec<Entry> = if absolute {
         entries
