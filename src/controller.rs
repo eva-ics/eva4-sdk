@@ -148,7 +148,7 @@ pub fn format_raw_state_topic(oid: &OID) -> String {
     format!("{}{}", RAW_STATE_TOPIC, oid.as_path())
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug, Copy, Clone, Eq, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum ItemProp {
     Status,
