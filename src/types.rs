@@ -17,6 +17,28 @@ pub struct State {
     pub set_time: f64,
 }
 
+impl From<LocalStateEvent> for State {
+    #[inline]
+    fn from(ev: LocalStateEvent) -> Self {
+        Self {
+            status: ev.status,
+            value: Some(ev.value),
+            set_time: ev.t,
+        }
+    }
+}
+
+impl From<RemoteStateEvent> for State {
+    #[inline]
+    fn from(ev: RemoteStateEvent) -> Self {
+        Self {
+            status: ev.status,
+            value: Some(ev.value),
+            set_time: ev.t,
+        }
+    }
+}
+
 /// basic state with OID specified inside the object, collected from RPC, useful to keep/transfer
 /// via internal channels
 #[derive(Serialize, Deserialize, Clone, Debug)]
