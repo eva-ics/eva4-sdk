@@ -154,6 +154,7 @@ pub fn svc_handle_default_rpc(method: &str, info: &services::ServiceInfo) -> Rpc
     }
 }
 
+/// Will be deprecated soon. Use eva_sdk::eapi instead
 #[inline]
 pub async fn safe_rpc_call(
     rpc: &RpcClient,
