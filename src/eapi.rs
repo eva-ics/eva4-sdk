@@ -46,14 +46,21 @@ impl ClientAccounting for Arc<Mutex<dyn AsyncClient>> {
 
 #[derive(Serialize, Deserialize, Default)]
 pub struct AccountingEvent<'a> {
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub u: Option<&'a str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub src: Option<&'a str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub svc: Option<&'a str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub subj: Option<&'a str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub oid: Option<OID>,
     #[serde(default)]
     pub data: Value,
     #[serde(default)]
     pub code: i16,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub err: Option<String>,
 }
 
