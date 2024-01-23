@@ -16,7 +16,7 @@ pub mod types;
 pub const EAPI_VERSION: u16 = 1;
 
 pub mod prelude {
-    pub use crate::eapi::{self, AccountingEvent, ClientAccounting};
+    pub use crate::eapi::{self as eapi_bus, AccountingEvent, ClientAccounting};
     pub use crate::service::process_extended_payload;
     pub use crate::service::safe_rpc_call;
     pub use crate::service::svc_block;
