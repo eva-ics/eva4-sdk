@@ -58,6 +58,8 @@ pub struct AccountingEvent<'a> {
     pub oid: Option<OID>,
     #[serde(default)]
     pub data: Value,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub note: Option<&'a str>,
     #[serde(default)]
     pub code: i16,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -108,6 +110,11 @@ impl<'a> AccountingEvent<'a> {
     #[inline]
     pub fn data(mut self, data: Value) -> Self {
         self.data = data;
+        self
+    }
+    #[inline]
+    pub fn note(mut self, note: &'a str) -> Self {
+        self.note.replace(note);
         self
     }
     #[inline]
