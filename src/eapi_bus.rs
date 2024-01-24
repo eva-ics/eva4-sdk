@@ -47,7 +47,9 @@ impl ClientAccounting for Arc<Mutex<dyn AsyncClient>> {
 
 #[derive(Serialize, Deserialize, Default)]
 pub struct AccountingEvent<'a> {
-    pub id: Uuid,
+    // the ID is usually assigned by the accounting service and should be None
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub id: Option<Uuid>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub u: Option<&'a str>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -87,10 +89,7 @@ impl<'a> TryFrom<&AccountingEvent<'a>> for busrt::borrow::Cow<'_> {
 impl<'a> AccountingEvent<'a> {
     #[inline]
     pub fn new() -> Self {
-        Self {
-            id: Uuid::new_v4(),
-            ..Default::default()
-        }
+        Self::default()
     }
     #[inline]
     pub fn user(mut self, user: &'a str) -> Self {
