@@ -60,7 +60,7 @@ pub struct AccountingEvent<'a> {
     pub subj: Option<&'a str>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub oid: Option<OID>,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Value::is_unit")]
     pub data: Value,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub note: Option<&'a str>,
