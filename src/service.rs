@@ -101,6 +101,7 @@ lazy_static! {
     static ref NEED_PANIC: Mutex<Option<Duration>> = <_>::default();
 }
 
+/// Will be deprecated soon. Use eva_sdk::eapi instead
 pub async fn subscribe_oids<R: Rpc>(rpc: &R, masks: &OIDMaskList, kind: EventKind) -> EResult<()> {
     let topics: Vec<String> = if kind == EventKind::Actual {
         let mut t = Vec::new();
@@ -169,7 +170,7 @@ pub async fn safe_rpc_call(
         .map_err(Into::into)
 }
 
-#[inline]
+/// Will be deprecated soon. Use eva_sdk::eapi instead
 pub async fn svc_wait_core(rpc: &RpcClient, timeout: Duration, wait_forever: bool) -> EResult<()> {
     #[derive(Deserialize)]
     struct TR {
@@ -244,6 +245,8 @@ pub fn svc_terminate() {
 }
 
 /// Block the service until terminate is called
+///
+/// Will be deprecated soon. Use eva_sdk::eapi instead
 #[inline]
 pub async fn svc_block(rpc: &RpcClient) {
     while svc_is_active() && rpc.is_connected() {
@@ -252,6 +255,8 @@ pub async fn svc_block(rpc: &RpcClient) {
 }
 
 /// Initializing service logs
+///
+/// Will be deprecated soon. Use eva_sdk::eapi instead
 ///
 /// After calling, log macros can be used, all records are transferred to bus LOG/IN/ topics
 ///
@@ -275,6 +280,8 @@ where
 }
 
 /// Sends a broadcast event to mark the service ready at launcher and announce neighbors
+///
+/// Will be deprecated soon. Use eva_sdk::eapi instead
 ///
 /// # Panics
 ///
@@ -301,6 +308,8 @@ where
 }
 
 /// Sends a broadcast event to mark the service terminating at launcher and announce neighbors
+///
+/// Will be deprecated soon. Use eva_sdk::eapi instead
 ///
 /// # Panics
 ///

@@ -1,8 +1,10 @@
 //! Helper module for EAPI micro-services
+use crate::service::{self, EventKind};
 use async_trait::async_trait;
 use busrt::client::AsyncClient;
 use busrt::rpc::{Rpc, RpcClient, RpcEvent};
 use busrt::QoS;
+use eva_common::acl::OIDMaskList;
 use eva_common::payload::pack;
 use eva_common::prelude::*;
 use once_cell::sync::OnceCell;
@@ -197,6 +199,34 @@ pub fn timeout() -> Duration {
         .unwrap_or(eva_common::DEFAULT_TIMEOUT)
 }
 
+///
+/// # Panics
+///
+/// Will panic if RPC not set
+#[inline]
+pub async fn subscribe(topic: &str) -> EResult<()> {
+    client()
+        .lock()
+        .await
+        .subscribe(topic, QoS::Processed)
+        .await?;
+    Ok(())
+}
+
+///
+/// # Panics
+///
+/// Will panic if RPC not set
+#[inline]
+pub async fn subscribe_bulk(topics: &[&str]) -> EResult<()> {
+    client()
+        .lock()
+        .await
+        .subscribe_bulk(topics, QoS::Processed)
+        .await?;
+    Ok(())
+}
+
 /// # Panics
 ///
 /// Will panic if RPC not set
@@ -221,4 +251,52 @@ pub async fn publish_confirmed(topic: &str, payload: busrt::borrow::Cow<'_>) -> 
         .publish(topic, payload, QoS::Processed)
         .await?;
     Ok(())
+}
+
+/// # Panics
+///
+/// Will panic if RPC not set
+#[inline]
+pub async fn subscribe_oids(masks: &OIDMaskList, kind: EventKind) -> EResult<()> {
+    service::subscribe_oids(rpc().as_ref(), masks, kind).await
+}
+
+/// # Panics
+///
+/// Will panic if RPC not set
+#[inline]
+pub async fn wait_core(wait_forever: bool) -> EResult<()> {
+    service::svc_wait_core(rpc().as_ref(), timeout(), wait_forever).await
+}
+
+/// # Panics
+///
+/// Will panic if RPC not set
+#[inline]
+pub fn init_logs(initial: &eva_common::services::Initial) -> EResult<()> {
+    service::svc_init_logs(initial, client())
+}
+
+/// # Panics
+///
+/// Will panic if RPC not set
+#[inline]
+pub async fn mark_ready() -> EResult<()> {
+    service::svc_mark_ready(&client()).await
+}
+
+/// # Panics
+///
+/// Will panic if RPC not set
+#[inline]
+pub async fn mark_terminating() -> EResult<()> {
+    service::svc_mark_terminating(&client()).await
+}
+
+/// # Panics
+///
+/// Will panic if RPC not set
+#[inline]
+pub async fn block() {
+    service::svc_block(rpc().as_ref()).await
 }
