@@ -2,11 +2,12 @@
 use crate::service::{self, EventKind};
 use async_trait::async_trait;
 use busrt::client::AsyncClient;
-use busrt::rpc::{Rpc, RpcClient, RpcEvent};
+use busrt::rpc::{Rpc, RpcClient, RpcEvent, RpcHandlers};
 use busrt::QoS;
 use eva_common::acl::OIDMaskList;
 use eva_common::payload::pack;
 use eva_common::prelude::*;
+use eva_common::services::Initial;
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -17,6 +18,7 @@ use uuid::Uuid;
 pub const AAA_REPORT_TOPIC: &str = "AAA/REPORT";
 
 static RPC: OnceCell<Arc<RpcClient>> = OnceCell::new();
+static RPC_SECONDARY: OnceCell<Arc<RpcClient>> = OnceCell::new();
 static CLIENT: OnceCell<Arc<Mutex<dyn AsyncClient>>> = OnceCell::new();
 static TIMEOUT: OnceCell<Duration> = OnceCell::new();
 
@@ -141,7 +143,27 @@ impl<'a> AccountingEvent<'a> {
     }
 }
 
-/// Must be called before using the module
+/// Initializes the module
+pub async fn init<H: RpcHandlers + Send + Sync + 'static>(
+    initial: &Initial,
+    handlers: H,
+) -> EResult<Arc<RpcClient>> {
+    let rpc = initial.init_rpc(handlers).await?;
+    set(rpc.clone(), initial.timeout())?;
+    Ok(rpc)
+}
+
+/// Initializes the module in blocking mode with secondary client for calls
+pub async fn init_blocking<H: RpcHandlers + Send + Sync + 'static>(
+    initial: &Initial,
+    handlers: H,
+) -> EResult<(Arc<RpcClient>, Arc<RpcClient>)> {
+    let (rpc, rpc_secondary) = initial.init_rpc_blocking_with_secondary(handlers).await?;
+    set_blocking(rpc.clone(), rpc_secondary.clone(), initial.timeout())?;
+    Ok((rpc, rpc_secondary))
+}
+
+/// Manually initialize the module
 pub fn set(rpc: Arc<RpcClient>, timeout: Duration) -> EResult<()> {
     CLIENT
         .set(rpc.client())
@@ -153,13 +175,26 @@ pub fn set(rpc: Arc<RpcClient>, timeout: Duration) -> EResult<()> {
     Ok(())
 }
 
+/// Manually initialize the module
+pub fn set_blocking(
+    rpc: Arc<RpcClient>,
+    rpc_secondary: Arc<RpcClient>,
+    timeout: Duration,
+) -> EResult<()> {
+    set(rpc, timeout)?;
+    RPC_SECONDARY
+        .set(rpc_secondary)
+        .map_err(|_| Error::core("Unable to set RPC_SECONDARY"))?;
+    Ok(())
+}
+
 /// # Panics
 ///
 /// Will panic if RPC not set
 pub async fn call0(target: &str, method: &str) -> EResult<RpcEvent> {
     tokio::time::timeout(
         timeout(),
-        rpc().call(target, method, busrt::empty_payload!(), QoS::No),
+        rpc_secondary().call(target, method, busrt::empty_payload!(), QoS::No),
     )
     .await?
     .map_err(Into::into)
@@ -169,9 +204,12 @@ pub async fn call0(target: &str, method: &str) -> EResult<RpcEvent> {
 ///
 /// Will panic if RPC not set
 pub async fn call(target: &str, method: &str, params: busrt::borrow::Cow<'_>) -> EResult<RpcEvent> {
-    tokio::time::timeout(timeout(), rpc().call(target, method, params, QoS::No))
-        .await?
-        .map_err(Into::into)
+    tokio::time::timeout(
+        timeout(),
+        rpc_secondary().call(target, method, params, QoS::No),
+    )
+    .await?
+    .map_err(Into::into)
 }
 
 /// # Panics
@@ -180,6 +218,22 @@ pub async fn call(target: &str, method: &str, params: busrt::borrow::Cow<'_>) ->
 #[inline]
 pub fn rpc() -> Arc<RpcClient> {
     RPC.get().cloned().unwrap()
+}
+
+/// Returns secondary client if initialized, otherwise fallbacks to the primary
+///
+/// Must be used for RPC calls when the primary client works in blocking mode
+///
+/// # Panics
+///
+/// Will panic if RPC not set
+#[inline]
+pub fn rpc_secondary() -> Arc<RpcClient> {
+    if let Some(rpc) = RPC_SECONDARY.get() {
+        rpc.clone()
+    } else {
+        rpc()
+    }
 }
 
 /// # Panics
@@ -273,7 +327,7 @@ pub async fn wait_core(wait_forever: bool) -> EResult<()> {
 ///
 /// Will panic if RPC not set
 #[inline]
-pub fn init_logs(initial: &eva_common::services::Initial) -> EResult<()> {
+pub fn init_logs(initial: &Initial) -> EResult<()> {
     service::svc_init_logs(initial, client())
 }
 
