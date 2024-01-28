@@ -8,6 +8,7 @@ use eva_common::acl::OIDMaskList;
 use eva_common::payload::pack;
 use eva_common::prelude::*;
 use eva_common::services::Initial;
+use eva_common::services::Registry;
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -19,6 +20,7 @@ pub const AAA_REPORT_TOPIC: &str = "AAA/REPORT";
 
 static RPC: OnceCell<Arc<RpcClient>> = OnceCell::new();
 static RPC_SECONDARY: OnceCell<Arc<RpcClient>> = OnceCell::new();
+static REGISTRY: OnceCell<Arc<Registry>> = OnceCell::new();
 static CLIENT: OnceCell<Arc<Mutex<dyn AsyncClient>>> = OnceCell::new();
 static TIMEOUT: OnceCell<Duration> = OnceCell::new();
 
@@ -150,6 +152,8 @@ pub async fn init<H: RpcHandlers + Send + Sync + 'static>(
 ) -> EResult<Arc<RpcClient>> {
     let rpc = initial.init_rpc(handlers).await?;
     set(rpc.clone(), initial.timeout())?;
+    let registry = initial.init_registry(&rpc);
+    set_registry(registry)?;
     Ok(rpc)
 }
 
@@ -160,6 +164,8 @@ pub async fn init_blocking<H: RpcHandlers + Send + Sync + 'static>(
 ) -> EResult<(Arc<RpcClient>, Arc<RpcClient>)> {
     let (rpc, rpc_secondary) = initial.init_rpc_blocking_with_secondary(handlers).await?;
     set_blocking(rpc.clone(), rpc_secondary.clone(), initial.timeout())?;
+    let registry = initial.init_registry(&rpc);
+    set_registry(registry)?;
     Ok((rpc, rpc_secondary))
 }
 
@@ -186,6 +192,13 @@ pub fn set_blocking(
         .set(rpc_secondary)
         .map_err(|_| Error::core("Unable to set RPC_SECONDARY"))?;
     Ok(())
+}
+
+/// Manually initialize registry
+pub fn set_registry(registry: Registry) -> EResult<()> {
+    REGISTRY
+        .set(Arc::new(registry))
+        .map_err(|_| Error::core("Unable to set REGISTRY"))
 }
 
 /// # Panics
@@ -251,6 +264,14 @@ pub fn timeout() -> Duration {
         .get()
         .copied()
         .unwrap_or(eva_common::DEFAULT_TIMEOUT)
+}
+
+/// # Panics
+///
+/// Will panic if REGISTRY not set
+#[inline]
+pub fn registry() -> Arc<Registry> {
+    REGISTRY.get().cloned().unwrap()
 }
 
 ///
@@ -331,6 +352,18 @@ pub fn init_logs(initial: &Initial) -> EResult<()> {
     service::svc_init_logs(initial, client())
 }
 
+/// calls mark_ready, block and mark_terminating
+///
+/// # Panics
+///
+/// Will panic if RPC not set
+pub async fn run() -> EResult<()> {
+    mark_ready().await?;
+    block().await;
+    mark_terminating().await?;
+    Ok(())
+}
+
 /// # Panics
 ///
 /// Will panic if RPC not set
@@ -352,5 +385,5 @@ pub async fn mark_terminating() -> EResult<()> {
 /// Will panic if RPC not set
 #[inline]
 pub async fn block() {
-    service::svc_block(rpc().as_ref()).await
+    service::svc_block(rpc().as_ref()).await;
 }
