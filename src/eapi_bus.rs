@@ -207,7 +207,7 @@ pub fn set_registry(registry: Registry) -> EResult<()> {
 pub async fn call0(target: &str, method: &str) -> EResult<RpcEvent> {
     tokio::time::timeout(
         timeout(),
-        rpc_secondary().call(target, method, busrt::empty_payload!(), QoS::No),
+        rpc_secondary().call(target, method, busrt::empty_payload!(), QoS::Processed),
     )
     .await?
     .map_err(Into::into)
@@ -219,7 +219,7 @@ pub async fn call0(target: &str, method: &str) -> EResult<RpcEvent> {
 pub async fn call(target: &str, method: &str, params: busrt::borrow::Cow<'_>) -> EResult<RpcEvent> {
     tokio::time::timeout(
         timeout(),
-        rpc_secondary().call(target, method, params, QoS::No),
+        rpc_secondary().call(target, method, params, QoS::Processed),
     )
     .await?
     .map_err(Into::into)
