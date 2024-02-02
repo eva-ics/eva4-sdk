@@ -8,6 +8,7 @@ pub struct ACI {
     acl: String,
     token_mode: Option<TokenMode>,
     u: Option<String>,
+    src: Option<String>,
 }
 
 impl ACI {
@@ -22,6 +23,10 @@ impl ACI {
     #[inline]
     pub fn user(&self) -> Option<&str> {
         self.u.as_deref()
+    }
+    #[inline]
+    pub fn source(&self) -> Option<&str> {
+        self.src.as_deref()
     }
     #[inline]
     pub fn writable(&self) -> bool {
