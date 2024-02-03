@@ -4,7 +4,8 @@ use async_trait::async_trait;
 use busrt::client::AsyncClient;
 use busrt::rpc::{Rpc, RpcClient, RpcEvent, RpcHandlers};
 use busrt::QoS;
-use eva_common::acl::OIDMaskList;
+use eva_common::acl::OIDMask;
+use eva_common::common_payloads::ParamsId;
 use eva_common::payload::pack;
 use eva_common::prelude::*;
 use eva_common::services::Initial;
@@ -332,7 +333,10 @@ pub async fn publish_confirmed(topic: &str, payload: busrt::borrow::Cow<'_>) -> 
 ///
 /// Will panic if RPC not set
 #[inline]
-pub async fn subscribe_oids(masks: &OIDMaskList, kind: EventKind) -> EResult<()> {
+pub async fn subscribe_oids<'a, M>(masks: M, kind: EventKind) -> EResult<()>
+where
+    M: IntoIterator<Item = &'a OIDMask>,
+{
     service::subscribe_oids(rpc().as_ref(), masks, kind).await
 }
 
@@ -386,4 +390,65 @@ pub async fn mark_terminating() -> EResult<()> {
 #[inline]
 pub async fn block() {
     service::svc_block(rpc().as_ref()).await;
+}
+
+/// Creates items, ignores errors if an item already exists
+///
+/// Must be called after the node core is ready
+///
+/// # Panics
+///
+/// Will panic if RPC not set
+pub async fn create_items<O: AsRef<OID>>(oids: &[O]) -> EResult<()> {
+    for oid in oids {
+        let payload = ParamsId {
+            i: oid.as_ref().as_str(),
+        };
+        if let Err(e) = call("eva.core", "item.create", pack(&payload)?.into()).await {
+            if e.kind() != ErrorKind::ResourceAlreadyExists {
+                return Err(e);
+            }
+        }
+    }
+    Ok(())
+}
+///
+/// Deploys items
+///
+/// Must be called after the node core is ready
+///
+/// The parameter must contain a list of item deployment payloads is equal to item.deploy
+/// eva.core EAPI call
+/// See also https://info.bma.ai/en/actual/eva4/iac.html#items
+///
+/// The parameter MUST be a collection: either inside the payload, or a list of payloads in
+/// a vector/slice etc.
+///
+/// Example:
+///
+/// ```rust,ignore
+/// let me = initial.id().to_owned();
+/// tokio::spawn(async move {
+///   let _ = eapi_bus::wait_core(true).await;
+///     let x: OID = "lmacro:aaa".parse().unwrap();
+///     let payload = serde_json::json! {[
+///        {
+///          "oid": x,
+///           "action": {"svc": me }
+///        }
+///        ]};
+///        let result = eapi_bus::deploy_items(&payload).await;
+/// });
+/// ```
+///
+/// # Panics
+///
+/// Will panic if RPC not set
+pub async fn deploy_items<T: Serialize>(items: &T) -> EResult<()> {
+    #[derive(Serialize)]
+    struct Payload<'a, T: Serialize> {
+        items: &'a T,
+    }
+    call("eva.core", "item.deploy", pack(&Payload { items })?.into()).await?;
+    Ok(())
 }

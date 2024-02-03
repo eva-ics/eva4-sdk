@@ -2,7 +2,7 @@
 use busrt::client::AsyncClient;
 use busrt::rpc::{Rpc, RpcClient, RpcError, RpcEvent, RpcResult};
 use busrt::QoS;
-use eva_common::acl::OIDMaskList;
+use eva_common::acl::OIDMask;
 use eva_common::events::{
     ANY_STATE_TOPIC, LOCAL_STATE_TOPIC, REMOTE_STATE_TOPIC, SERVICE_STATUS_TOPIC,
 };
@@ -102,18 +102,21 @@ lazy_static! {
 }
 
 /// Will be deprecated soon. Use eva_sdk::eapi instead
-pub async fn subscribe_oids<R: Rpc>(rpc: &R, masks: &OIDMaskList, kind: EventKind) -> EResult<()> {
+pub async fn subscribe_oids<'a, R, M>(rpc: &R, masks: M, kind: EventKind) -> EResult<()>
+where
+    R: Rpc,
+    M: IntoIterator<Item = &'a OIDMask>,
+{
     let topics: Vec<String> = if kind == EventKind::Actual {
         let mut t = Vec::new();
-        for mask in masks.oid_masks() {
+        for mask in masks {
             t.push(format!("{}{}", LOCAL_STATE_TOPIC, mask.as_path()));
             t.push(format!("{}{}", REMOTE_STATE_TOPIC, mask.as_path()));
         }
         t
     } else {
         masks
-            .oid_masks()
-            .iter()
+            .into_iter()
             .map(|mask| format!("{}{}", kind.topic(), mask.as_path()))
             .collect()
     };
