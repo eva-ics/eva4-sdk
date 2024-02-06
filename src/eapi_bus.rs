@@ -11,7 +11,7 @@ use eva_common::prelude::*;
 use eva_common::services::Initial;
 use eva_common::services::Registry;
 use once_cell::sync::OnceCell;
-use serde::{Deserialize, Serialize};
+use serde::{ser::SerializeSeq, Deserialize, Deserializer, Serialize, Serializer};
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::Mutex;
@@ -52,10 +52,45 @@ impl ClientAccounting for Arc<Mutex<dyn AsyncClient>> {
     }
 }
 
+fn serialize_opt_uuid_as_seq<S>(uuid: &Option<Uuid>, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    if let Some(u) = uuid {
+        let bytes = u.as_bytes();
+        let mut seq = serializer.serialize_seq(Some(bytes.len()))?;
+        for &byte in bytes {
+            seq.serialize_element(&byte)?;
+        }
+        seq.end()
+    } else {
+        serializer.serialize_none()
+    }
+}
+
+fn deserialize_opt_uuid<'de, D>(deserializer: D) -> Result<Option<Uuid>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let val: Value = Deserialize::deserialize(deserializer)?;
+    if val == Value::Unit {
+        Ok(None)
+    } else {
+        Ok(Some(
+            Uuid::deserialize(val).map_err(serde::de::Error::custom)?,
+        ))
+    }
+}
+
 #[derive(Serialize, Deserialize, Default)]
 pub struct AccountingEvent<'a> {
     // the ID is usually assigned by the accounting service and should be None
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        serialize_with = "serialize_opt_uuid_as_seq",
+        deserialize_with = "deserialize_opt_uuid"
+    )]
     pub id: Option<Uuid>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub u: Option<&'a str>,
