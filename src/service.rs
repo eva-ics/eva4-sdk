@@ -16,6 +16,7 @@ use eva_common::SLEEP_STEP;
 pub use eva_sdk_derive::svc_main;
 use lazy_static::lazy_static;
 use log::error;
+use once_cell::sync::OnceCell;
 use parking_lot::Mutex;
 use serde::{Deserialize, Deserializer};
 use std::future::Future;
@@ -30,7 +31,16 @@ use tokio::task::futures::TaskLocalFuture;
 use tokio::time::sleep;
 use uuid::Uuid;
 
+static BUS_ERROR_SUICIDE_TIMEOUT: OnceCell<Duration> = OnceCell::new();
+
 const ERR_CRITICAL_BUS: &str = "CRITICAL: bus disconnected";
+
+/// Must be called once
+pub fn set_bus_error_suicide_timeout(bes_timeout: Duration) -> EResult<()> {
+    BUS_ERROR_SUICIDE_TIMEOUT
+        .set(bes_timeout)
+        .map_err(|_| Error::failed("Unable to set BUS_ERROR_SUICIDE_TIMEOUT"))
+}
 
 fn deserialize_opt_uuid<'de, D>(deserializer: D) -> Result<Option<Uuid>, D::Error>
 where
@@ -258,7 +268,12 @@ pub async fn svc_block(rpc: &RpcClient) {
     while svc_is_active() {
         if !rpc.is_connected() {
             error!("{}", ERR_CRITICAL_BUS);
-            bmart::process::suicide(Duration::from_secs(0), false);
+            bmart::process::suicide(
+                BUS_ERROR_SUICIDE_TIMEOUT
+                    .get()
+                    .map_or_else(|| Duration::from_secs(0), |v| *v),
+                false,
+            );
         }
         sleep(SLEEP_STEP).await;
     }
@@ -272,7 +287,12 @@ pub async fn svc_block2(rpc: &RpcClient, secondary: &RpcClient) {
     while svc_is_active() {
         if !rpc.is_connected() || !secondary.is_connected() {
             error!("{}", ERR_CRITICAL_BUS);
-            bmart::process::suicide(Duration::from_secs(0), false);
+            bmart::process::suicide(
+                BUS_ERROR_SUICIDE_TIMEOUT
+                    .get()
+                    .map_or_else(|| Duration::from_secs(0), |v| *v),
+                false,
+            );
         }
         sleep(SLEEP_STEP).await;
     }

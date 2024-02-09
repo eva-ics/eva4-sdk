@@ -419,6 +419,19 @@ pub async fn mark_terminating() -> EResult<()> {
     service::svc_mark_terminating(&client()).await
 }
 
+/// Must be called once
+pub fn set_bus_error_suicide_timeout(bes_timeout: Duration) -> EResult<()> {
+    service::set_bus_error_suicide_timeout(bes_timeout)
+}
+
+/// Blocks the service while active
+///
+/// In case if the local bus connection is dropped, the service is terminated immediately, as well
+/// as all its subprocesses
+///
+/// This behaviour can be changed by calling set_bus_error_suicide_timeout method and specifying a
+/// proper required shutdown timeout until the service is killed
+///
 /// # Panics
 ///
 /// Will panic if RPC not set
