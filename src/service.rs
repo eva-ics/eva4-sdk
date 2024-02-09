@@ -274,6 +274,7 @@ pub async fn svc_block(rpc: &RpcClient) {
                     .map_or_else(|| Duration::from_secs(0), |v| *v),
                 false,
             );
+            break;
         }
         sleep(SLEEP_STEP).await;
     }
@@ -293,6 +294,7 @@ pub async fn svc_block2(rpc: &RpcClient, secondary: &RpcClient) {
                     .map_or_else(|| Duration::from_secs(0), |v| *v),
                 false,
             );
+            break;
         }
         sleep(SLEEP_STEP).await;
     }
