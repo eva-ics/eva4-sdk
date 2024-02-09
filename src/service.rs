@@ -15,6 +15,7 @@ use eva_common::services::SERVICE_PAYLOAD_PING;
 use eva_common::SLEEP_STEP;
 pub use eva_sdk_derive::svc_main;
 use lazy_static::lazy_static;
+use log::error;
 use parking_lot::Mutex;
 use serde::{Deserialize, Deserializer};
 use std::future::Future;
@@ -28,6 +29,8 @@ use tokio::signal::unix::{signal, SignalKind};
 use tokio::task::futures::TaskLocalFuture;
 use tokio::time::sleep;
 use uuid::Uuid;
+
+const ERR_CRITICAL_BUS: &str = "CRITICAL: bus disconnected";
 
 fn deserialize_opt_uuid<'de, D>(deserializer: D) -> Result<Option<Uuid>, D::Error>
 where
@@ -252,7 +255,25 @@ pub fn svc_terminate() {
 /// Will be deprecated soon. Use eva_sdk::eapi instead
 #[inline]
 pub async fn svc_block(rpc: &RpcClient) {
-    while svc_is_active() && rpc.is_connected() {
+    while svc_is_active() {
+        if !rpc.is_connected() {
+            error!("{}", ERR_CRITICAL_BUS);
+            bmart::process::suicide(Duration::from_secs(0), false);
+        }
+        sleep(SLEEP_STEP).await;
+    }
+}
+
+/// Block the service until terminate is called, checking both primary and secondary RPC
+///
+/// Will be deprecated soon. Use eva_sdk::eapi instead
+#[inline]
+pub async fn svc_block2(rpc: &RpcClient, secondary: &RpcClient) {
+    while svc_is_active() {
+        if !rpc.is_connected() || !secondary.is_connected() {
+            error!("{}", ERR_CRITICAL_BUS);
+            bmart::process::suicide(Duration::from_secs(0), false);
+        }
         sleep(SLEEP_STEP).await;
     }
 }

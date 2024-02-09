@@ -424,7 +424,11 @@ pub async fn mark_terminating() -> EResult<()> {
 /// Will panic if RPC not set
 #[inline]
 pub async fn block() {
-    service::svc_block(rpc().as_ref()).await;
+    if let Some(secondary) = RPC_SECONDARY.get() {
+        service::svc_block2(rpc().as_ref(), secondary).await;
+    } else {
+        service::svc_block(rpc().as_ref()).await;
+    }
 }
 
 /// Creates items, ignores errors if an item already exists
