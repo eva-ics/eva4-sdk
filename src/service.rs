@@ -26,6 +26,7 @@ use std::sync::atomic;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::io::AsyncReadExt;
+#[cfg(not(target_os = "windows"))]
 use tokio::signal::unix::{signal, SignalKind};
 use tokio::task::futures::TaskLocalFuture;
 use tokio::time::sleep;
@@ -385,6 +386,7 @@ where
 /// Start service signal handlers (SIGTERM and SIGINT)
 ///
 /// Calls the terminate method when received
+#[cfg(not(target_os = "windows"))]
 pub fn svc_start_signal_handlers() {
     macro_rules! handle_signal {
         ($signal: expr) => {{

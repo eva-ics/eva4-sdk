@@ -25,10 +25,12 @@ pub mod prelude {
     pub use crate::service::svc_init_logs;
     pub use crate::service::svc_is_active;
     pub use crate::service::svc_is_terminating;
+    #[cfg(not(target_os = "windows"))]
     pub use crate::service::svc_launch;
     pub use crate::service::svc_main;
     pub use crate::service::svc_mark_ready;
     pub use crate::service::svc_mark_terminating;
+    #[cfg(not(target_os = "windows"))]
     pub use crate::service::svc_start_signal_handlers;
     pub use crate::service::svc_terminate;
     pub use crate::service::svc_wait_core;
