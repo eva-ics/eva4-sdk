@@ -1,6 +1,6 @@
 [package]
 name = "eva-sdk"
-version = "0.3.41"
+version = "0.3.42"
 edition = "2021"
 authors = ["Serhij S. <div@altertech.com>"]
 license = "Apache-2.0"
@@ -18,7 +18,7 @@ features = ["full", "eva-common/openssl-no-fips"]
 [dependencies]
 eva-sdk-derive = "0.1.2"
 uuid = { version = "1.1.2", features = ["serde"] }
-busrt = { version = "0.4", features = ["full"] }
+busrt = { version = "0.4", features = ["ipc", "rpc"] }
 serde = { version = "1.0.143", features = ["derive", "rc"] }
 tokio = { version = "1.20.1", features = ["full"] }
 eva-common = { version = "0.3.39", features = ["acl", "events", "actions",
