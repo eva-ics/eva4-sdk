@@ -455,6 +455,7 @@ pub fn read_initial_sync() -> EResult<services::Initial> {
     process_initial(&buf)
 }
 
+#[cfg(not(target = "windows"))]
 pub fn svc_launch<L, LFut>(launcher: L) -> EResult<()>
 where
     L: FnMut(services::Initial) -> LFut,
@@ -469,6 +470,7 @@ where
     Ok(())
 }
 
+#[cfg(not(target = "windows"))]
 async fn launch<L, LFut>(mut launcher: L, mut initial: services::Initial) -> EResult<()>
 where
     L: FnMut(services::Initial) -> LFut,
