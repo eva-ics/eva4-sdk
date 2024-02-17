@@ -2,7 +2,7 @@ use eva_common::acl::Acl;
 use eva_common::prelude::*;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct ACI {
     auth: AuthMode,
     acl: String,
@@ -53,11 +53,13 @@ pub enum TokenMode {
     Readonly,
 }
 
-#[derive(Debug, Serialize, Deserialize, Copy, Clone, Eq, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Copy, Clone, Eq, PartialEq, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum AuthMode {
     Token,
     Key,
+    #[default]
+    No,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
