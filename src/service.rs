@@ -65,7 +65,7 @@ pub struct ExtendedParams {
 
 pub fn process_extended_payload(full_payload: &[u8]) -> EResult<(&[u8], Option<ExtendedParams>)> {
     if full_payload.len() > 4 && full_payload[0] == 0xc1 && full_payload[1] == 0xc1 {
-        let pos = usize::try_from(u16::from_le_bytes([full_payload[2], full_payload[3]]))? + 4;
+        let pos = usize::from(u16::from_le_bytes([full_payload[2], full_payload[3]])) + 4;
         if full_payload.len() < pos {
             return Err(Error::invalid_data("invalid extended payload"));
         }
