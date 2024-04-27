@@ -145,6 +145,36 @@ where
     Ok(())
 }
 
+/// Will be deprecated soon. Use eva_sdk::eapi instead
+pub async fn exclude_oids<'a, R, M>(rpc: &R, masks: M, kind: EventKind) -> EResult<()>
+where
+    R: Rpc,
+    M: IntoIterator<Item = &'a OIDMask>,
+{
+    let topics: Vec<String> = if kind == EventKind::Actual {
+        let mut t = Vec::new();
+        for mask in masks {
+            t.push(format!("{}{}", LOCAL_STATE_TOPIC, mask.as_path()));
+            t.push(format!("{}{}", REMOTE_STATE_TOPIC, mask.as_path()));
+        }
+        t
+    } else {
+        masks
+            .into_iter()
+            .map(|mask| format!("{}{}", kind.topic(), mask.as_path()))
+            .collect()
+    };
+    rpc.client()
+        .lock()
+        .await
+        .exclude_bulk(
+            &topics.iter().map(String::as_str).collect::<Vec<&str>>(),
+            QoS::No,
+        )
+        .await?;
+    Ok(())
+}
+
 pub fn set_poc(panic_in: Option<Duration>) {
     *NEED_PANIC.lock() = panic_in;
 }

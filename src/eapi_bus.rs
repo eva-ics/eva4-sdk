@@ -379,6 +379,17 @@ where
 ///
 /// Will panic if RPC not set
 #[inline]
+pub async fn exclude_oids<'a, M>(masks: M, kind: EventKind) -> EResult<()>
+where
+    M: IntoIterator<Item = &'a OIDMask>,
+{
+    service::exclude_oids(rpc().as_ref(), masks, kind).await
+}
+
+/// # Panics
+///
+/// Will panic if RPC not set
+#[inline]
 pub async fn wait_core(wait_forever: bool) -> EResult<()> {
     service::svc_wait_core(rpc().as_ref(), timeout(), wait_forever).await
 }
