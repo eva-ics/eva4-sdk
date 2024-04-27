@@ -134,6 +134,9 @@ where
             .map(|mask| format!("{}{}", kind.topic(), mask.as_path()))
             .collect()
     };
+    if topics.is_empty() {
+        return Ok(());
+    }
     rpc.client()
         .lock()
         .await
@@ -164,6 +167,9 @@ where
             .map(|mask| format!("{}{}", kind.topic(), mask.as_path()))
             .collect()
     };
+    if topics.is_empty() {
+        return Ok(());
+    }
     rpc.client()
         .lock()
         .await

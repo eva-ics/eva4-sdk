@@ -1,6 +1,6 @@
 [package]
 name = "eva-sdk"
-version = "0.3.46"
+version = "0.3.47"
 edition = "2021"
 authors = ["Serhij S. <div@altertech.com>"]
 license = "Apache-2.0"
