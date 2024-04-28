@@ -515,3 +515,17 @@ pub async fn deploy_items<T: Serialize>(items: &T) -> EResult<()> {
     call("eva.core", "item.deploy", pack(&Payload { items })?.into()).await?;
     Ok(())
 }
+
+pub async fn undeploy_items<T: Serialize>(items: &T) -> EResult<()> {
+    #[derive(Serialize)]
+    struct Payload<'a, T: Serialize> {
+        items: &'a T,
+    }
+    call(
+        "eva.core",
+        "item.undeploy",
+        pack(&Payload { items })?.into(),
+    )
+    .await?;
+    Ok(())
+}
