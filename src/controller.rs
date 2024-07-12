@@ -36,7 +36,7 @@ impl RawStateEventPreparedOwned {
         &mut self.state
     }
     pub fn is_modified(&self, prev: &RawStateEventOwned) -> bool {
-        if !self.state.force && self.state.status == prev.status {
+        if self.state.force == eva_common::events::Force::None && self.state.status == prev.status {
             if self.state.value == prev.value {
                 return false;
             }
