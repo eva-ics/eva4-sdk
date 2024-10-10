@@ -21,7 +21,7 @@ uuid = { version = "1.1.2", features = ["serde"] }
 busrt = { version = "0.4.10", features = ["ipc", "rpc"] }
 serde = { version = "1.0.143", features = ["derive", "rc"] }
 tokio = { version = "1.20.1", features = ["full"] }
-eva-common = { version = "0.3.72", features = ["acl", "events", "actions",
+eva-common = { version = "0.3.74", features = ["acl", "events", "actions",
   "bus-rpc", "services", "registry", "extended-value", "payload", "logger", "common-payloads"] }
 log = "0.4.14"
 lazy_static = "1.4.0"
