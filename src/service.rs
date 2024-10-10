@@ -57,6 +57,10 @@ where
     }
 }
 
+fn is_debug() -> bool {
+    std::env::var("EVA_SVC_DEBUG").unwrap_or_default() == "1"
+}
+
 #[derive(Deserialize)]
 pub struct ExtendedParams {
     #[serde(deserialize_with = "deserialize_opt_uuid")]
@@ -354,12 +358,17 @@ pub fn svc_init_logs<C>(
 where
     C: ?Sized + AsyncClient + 'static,
 {
-    eva_common::logger::init_bus(
-        client,
-        initial.bus_queue_size(),
-        initial.eva_log_level_filter(),
-        initial.call_tracing(),
-    )
+    if is_debug() {
+        env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
+        Ok(())
+    } else {
+        eva_common::logger::init_bus(
+            client,
+            initial.bus_queue_size(),
+            initial.eva_log_level_filter(),
+            initial.call_tracing(),
+        )
+    }
 }
 
 /// Sends a broadcast event to mark the service ready at launcher and announce neighbors
