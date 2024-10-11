@@ -504,9 +504,9 @@ pub fn read_initial_sync() -> EResult<services::Initial> {
 
 #[cfg(target_os = "linux")]
 fn apply_thread_params(tid: libc::c_int, params: &services::RealtimeConfig) -> EResult<()> {
-    let uid = unsafe { libc::getuid() };
+    let user_id = unsafe { libc::getuid() };
     if !params.cpu_ids.is_empty() {
-        if uid == 0 {
+        if user_id == 0 {
             unsafe {
                 let mut cpuset: libc::cpu_set_t = std::mem::zeroed();
                 for cpu in &params.cpu_ids {
@@ -523,7 +523,7 @@ fn apply_thread_params(tid: libc::c_int, params: &services::RealtimeConfig) -> E
         }
     }
     if let Some(priority) = params.priority {
-        if uid == 0 {
+        if user_id == 0 {
             let res = unsafe {
                 libc::sched_setscheduler(
                     tid,
