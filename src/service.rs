@@ -504,7 +504,10 @@ pub fn read_initial_sync() -> EResult<services::Initial> {
 
 #[cfg(target_os = "linux")]
 fn apply_current_thread_params(params: &services::RealtimeConfig) -> EResult<()> {
-    let mut rt_params = rtsc::thread_rt::Params::default();
+    let mut rt_params = rtsc::thread_rt::Params {
+        cpu_ids: params.cpu_ids.clone(),
+        ..Default::default()
+    };
     if let Some(priority) = params.priority {
         rt_params.priority = Some(priority);
         if priority > 0 {
