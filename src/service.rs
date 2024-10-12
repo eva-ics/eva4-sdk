@@ -502,6 +502,30 @@ pub fn read_initial_sync() -> EResult<services::Initial> {
     process_initial(&buf)
 }
 
+#[cfg(not(target_env = "musl"))]
+fn scheduler_param(priority: i32) -> libc::sched_param {
+    libc::sched_param {
+        sched_priority: priority,
+    }
+}
+
+#[cfg(target_env = "musl")]
+fn scheduler_param(priority: i32) -> libc::sched_param {
+    libc::sched_param {
+        sched_priority: priority,
+        sched_ss_low_priority: 0,
+        sched_ss_repl_period: libc::timespec {
+            tv_sec: 0,
+            tv_nsec: 0,
+        },
+        sched_ss_init_budget: libc::timespec {
+            tv_sec: 0,
+            tv_nsec: 0,
+        },
+        sched_ss_max_repl: 0,
+    }
+}
+
 #[cfg(target_os = "linux")]
 fn apply_thread_params(tid: libc::c_int, params: &services::RealtimeConfig) -> EResult<()> {
     let user_id = unsafe { libc::getuid() };
@@ -525,13 +549,7 @@ fn apply_thread_params(tid: libc::c_int, params: &services::RealtimeConfig) -> E
     if let Some(priority) = params.priority {
         if user_id == 0 {
             let res = unsafe {
-                libc::sched_setscheduler(
-                    tid,
-                    libc::SCHED_FIFO,
-                    &libc::sched_param {
-                        sched_priority: priority,
-                    },
-                )
+                libc::sched_setscheduler(tid, libc::SCHED_FIFO, &scheduler_param(priority))
             };
             if res != 0 {
                 return Err(Error::failed(format!(
