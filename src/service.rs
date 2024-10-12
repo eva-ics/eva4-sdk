@@ -502,66 +502,26 @@ pub fn read_initial_sync() -> EResult<services::Initial> {
     process_initial(&buf)
 }
 
-#[cfg(not(target_env = "musl"))]
-fn scheduler_param(priority: i32) -> libc::sched_param {
-    libc::sched_param {
-        sched_priority: priority,
-    }
-}
-
-#[cfg(target_env = "musl")]
-fn scheduler_param(priority: i32) -> libc::sched_param {
-    libc::sched_param {
-        sched_priority: priority,
-        sched_ss_low_priority: 0,
-        sched_ss_repl_period: libc::timespec {
-            tv_sec: 0,
-            tv_nsec: 0,
-        },
-        sched_ss_init_budget: libc::timespec {
-            tv_sec: 0,
-            tv_nsec: 0,
-        },
-        sched_ss_max_repl: 0,
-    }
-}
-
 #[cfg(target_os = "linux")]
-fn apply_thread_params(tid: libc::c_int, params: &services::RealtimeConfig) -> EResult<()> {
-    let user_id = unsafe { libc::getuid() };
-    if !params.cpu_ids.is_empty() {
-        if user_id == 0 {
-            unsafe {
-                let mut cpuset: libc::cpu_set_t = std::mem::zeroed();
-                for cpu in &params.cpu_ids {
-                    libc::CPU_SET(*cpu, &mut cpuset);
-                }
-                let res =
-                    libc::sched_setaffinity(tid, std::mem::size_of::<libc::cpu_set_t>(), &cpuset);
-                if res != 0 {
-                    return Err(Error::failed(format!("CPU affinity set error: {}", res)));
-                }
-            }
-        } else {
-            eprintln!("CPU affinity is not set, the service is not launched as root");
-        }
-    }
+fn apply_current_thread_params(params: &services::RealtimeConfig) -> EResult<()> {
+    let mut rt_params = rtsc::thread_rt::Params::default();
     if let Some(priority) = params.priority {
-        if user_id == 0 {
-            let res = unsafe {
-                libc::sched_setscheduler(tid, libc::SCHED_FIFO, &scheduler_param(priority))
-            };
-            if res != 0 {
-                return Err(Error::failed(format!(
-                    "Real-time priority set error: {}",
-                    res
-                )));
-            }
-        } else {
-            eprintln!("Real-time priority is not set, the service is not launched as root");
+        rt_params.priority = Some(priority);
+        if priority > 0 {
+            rt_params.scheduling = rtsc::thread_rt::Scheduling::FIFO;
         }
     }
-    Ok(())
+    match rtsc::thread_rt::apply_for_current(&rt_params) {
+        Ok(_) => Ok(()),
+        Err(e) if e == rtsc::Error::AccessDenied => {
+            eprintln!("Real-time parameters are not set, the service is not launched as root");
+            Ok(())
+        }
+        Err(e) => Err(Error::failed(format!(
+            "Real-time priority set error: {}",
+            e
+        ))),
+    }
 }
 
 #[cfg(not(target_os = "windows"))]
@@ -571,8 +531,7 @@ where
     LFut: std::future::Future<Output = EResult<()>>,
 {
     let initial = read_initial_sync()?;
-    let tid = unsafe { i32::try_from(libc::syscall(libc::SYS_gettid)).unwrap_or(-200) };
-    apply_thread_params(tid, initial.realtime())?;
+    apply_current_thread_params(initial.realtime())?;
     let rt = tokio::runtime::Builder::new_multi_thread()
         .worker_threads(initial.workers() as usize)
         .enable_all()
