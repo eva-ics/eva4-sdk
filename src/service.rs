@@ -512,8 +512,8 @@ fn apply_current_thread_params(params: &services::RealtimeConfig) -> EResult<()>
         }
     }
     match rtsc::thread_rt::apply_for_current(&rt_params) {
-        Ok(_) => Ok(()),
-        Err(e) if e == rtsc::Error::AccessDenied => {
+        Ok(()) => Ok(()),
+        Err(rtsc::Error::AccessDenied) => {
             eprintln!("Real-time parameters are not set, the service is not launched as root");
             Ok(())
         }
