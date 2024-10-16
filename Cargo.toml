@@ -1,6 +1,6 @@
 [package]
 name = "eva-sdk"
-version = "0.3.57"
+version = "0.3.58"
 edition = "2021"
 authors = ["Serhij S. <div@altertech.com>"]
 license = "Apache-2.0"
@@ -21,7 +21,7 @@ uuid = { version = "1.1.2", features = ["serde"] }
 busrt = { version = "0.4.10", features = ["ipc", "rpc"] }
 serde = { version = "1.0.143", features = ["derive", "rc"] }
 tokio = { version = "1.20.1", features = ["full"] }
-eva-common = { version = "^0.3.77", features = ["acl", "events", "actions",
+eva-common = { version = "^0.3.78", features = ["acl", "events", "actions",
   "bus-rpc", "services", "registry", "extended-value", "payload", "logger", "common-payloads"] }
 log = "0.4.14"
 lazy_static = "1.4.0"
@@ -32,7 +32,7 @@ hyper = { version = "0.14.18", features = ["client", "http1", "tcp"], optional =
 hyper-tls = { version = "0.5.0", optional = true }
 simple-pool = { version = "0.0.17", optional = true }
 libc = "0.2.126"
-parking_lot = "0.12.1"
+parking_lot = { package = "parking_lot_rt", version = "0.12.1" }
 openssl = { version = "0.10.49", optional = true }
 glob-match = { version = "0.2.1", optional = true }
 async-recursion = { version = "1.0.5", optional = true }
