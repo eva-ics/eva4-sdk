@@ -392,11 +392,9 @@ where
         src: Option<&'a str>,
         broadcast: bool,
     }
-    match service::svc_wait_core(rpc().as_ref(), Duration::default(), false).await {
-        Ok(true) => return Ok(()), // the core was inactive, the announce is not necessary
-        Err(e) if e.kind() == ErrorKind::Timeout => return Ok(()), // the core was inactive, the announce is not necessary
-        Ok(false) => {}          // the core was active, the announce is required
-        Err(e) => return Err(e), // core error
+    if !service::svc_is_core_active(rpc().as_ref(), timeout()).await {
+        // the core is inactive, no need to announce
+        return Ok(());
     }
     let payload = Payload {
         i: masks.into_iter().collect(),

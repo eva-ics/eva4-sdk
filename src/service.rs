@@ -227,16 +227,36 @@ pub async fn safe_rpc_call(
         .map_err(Into::into)
 }
 
+pub(crate) async fn svc_is_core_active(rpc: &RpcClient, timeout: Duration) -> bool {
+    #[derive(Deserialize)]
+    struct TR {
+        active: bool,
+    }
+    if let Ok(ev) = safe_rpc_call(
+        rpc,
+        "eva.core",
+        "test",
+        busrt::empty_payload!(),
+        QoS::Processed,
+        timeout,
+    )
+    .await
+    {
+        if let Ok(result) = unpack::<TR>(ev.payload()) {
+            if result.active {
+                return true;
+            }
+        }
+    }
+    false
+}
+
 /// Will be deprecated soon. Use eva_sdk::eapi instead
 pub async fn svc_wait_core(
     rpc: &RpcClient,
     timeout: Duration,
     wait_forever: bool,
 ) -> EResult<bool> {
-    #[derive(Deserialize)]
-    struct TR {
-        active: bool,
-    }
     let wait_until = Instant::now() + timeout;
     let mut core_inactive = false;
     let mut int = tokio::time::interval(SLEEP_STEP);
@@ -247,21 +267,8 @@ pub async fn svc_wait_core(
                 "core load wait aborted, the service is not active",
             ));
         }
-        if let Ok(ev) = safe_rpc_call(
-            rpc,
-            "eva.core",
-            "test",
-            busrt::empty_payload!(),
-            QoS::Processed,
-            timeout,
-        )
-        .await
-        {
-            if let Ok(result) = unpack::<TR>(ev.payload()) {
-                if result.active {
-                    return Ok(core_inactive);
-                }
-            }
+        if svc_is_core_active(rpc, timeout).await {
+            return Ok(core_inactive);
         }
         core_inactive = true;
         if !wait_forever && wait_until <= Instant::now() {
