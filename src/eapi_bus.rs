@@ -375,6 +375,42 @@ where
     service::subscribe_oids(rpc().as_ref(), masks, kind).await
 }
 
+/// Request announce for the specific items, the core will send states to item state topics,
+/// exclusively for the current service. As the method locks the core inventory for updates, it
+/// should be used with caution
+///
+/// The method will return immediately if the core is inactive as all the states will be
+/// automaticaly announced when the node goes to ready state
+#[inline]
+pub async fn request_announce<'a, M>(masks: M, kind: EventKind) -> EResult<()>
+where
+    M: IntoIterator<Item = &'a OIDMask>,
+{
+    #[derive(Serialize)]
+    struct Payload<'a> {
+        i: Vec<&'a OIDMask>,
+        src: Option<&'a str>,
+        broadcast: bool,
+    }
+    match service::svc_wait_core(rpc().as_ref(), Duration::default(), false).await {
+        Ok(true) => return Ok(()), // the core was inactive, the announce is not necessary
+        Err(e) if e.kind() == ErrorKind::Timeout => return Ok(()), // the core was inactive, the announce is not necessary
+        Ok(false) => {}          // the core was active, the announce is required
+        Err(e) => return Err(e), // core error
+    }
+    let payload = Payload {
+        i: masks.into_iter().collect(),
+        src: match kind {
+            EventKind::Actual | EventKind::Any => None,
+            EventKind::Local => Some(".local"),
+            EventKind::Remote => Some(".remote-any"),
+        },
+        broadcast: false,
+    };
+    call("eva.core", "item.announce", pack(&payload)?.into()).await?;
+    Ok(())
+}
+
 /// # Panics
 ///
 /// Will panic if RPC not set
@@ -386,11 +422,14 @@ where
     service::exclude_oids(rpc().as_ref(), masks, kind).await
 }
 
+/// Returns true if the core was inactive (not ready) and the service has been waiting for it,
+/// false if the core was already active
+///
 /// # Panics
 ///
 /// Will panic if RPC not set
 #[inline]
-pub async fn wait_core(wait_forever: bool) -> EResult<()> {
+pub async fn wait_core(wait_forever: bool) -> EResult<bool> {
     service::svc_wait_core(rpc().as_ref(), timeout(), wait_forever).await
 }
 
