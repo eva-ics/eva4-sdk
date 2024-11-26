@@ -316,11 +316,20 @@ pub fn registry() -> Arc<Registry> {
 /// Will panic if RPC not set
 #[inline]
 pub async fn subscribe(topic: &str) -> EResult<()> {
-    client()
+    tokio::time::timeout(timeout(), subscribe_impl(topic)).await??;
+    Ok(())
+}
+#[inline]
+async fn subscribe_impl(topic: &str) -> EResult<()> {
+    let Some(op) = client()
         .lock()
         .await
         .subscribe(topic, QoS::Processed)
-        .await?;
+        .await?
+    else {
+        return Ok(());
+    };
+    op.await??;
     Ok(())
 }
 
@@ -330,11 +339,20 @@ pub async fn subscribe(topic: &str) -> EResult<()> {
 /// Will panic if RPC not set
 #[inline]
 pub async fn subscribe_bulk(topics: &[&str]) -> EResult<()> {
-    client()
+    tokio::time::timeout(timeout(), subscribe_bulk_impl(topics)).await??;
+    Ok(())
+}
+#[inline]
+async fn subscribe_bulk_impl(topics: &[&str]) -> EResult<()> {
+    let Some(op) = client()
         .lock()
         .await
         .subscribe_bulk(topics, QoS::Processed)
-        .await?;
+        .await?
+    else {
+        return Ok(());
+    };
+    op.await??;
     Ok(())
 }
 
@@ -343,11 +361,20 @@ pub async fn subscribe_bulk(topics: &[&str]) -> EResult<()> {
 /// Will panic if RPC not set
 #[inline]
 pub async fn publish(topic: &str, payload: busrt::borrow::Cow<'_>) -> EResult<()> {
-    client()
+    tokio::time::timeout(timeout(), publish_impl(topic, payload)).await??;
+    Ok(())
+}
+#[inline]
+async fn publish_impl(topic: &str, payload: busrt::borrow::Cow<'_>) -> EResult<()> {
+    let Some(op) = client()
         .lock()
         .await
         .publish(topic, payload, QoS::No)
-        .await?;
+        .await?
+    else {
+        return Ok(());
+    };
+    op.await??;
     Ok(())
 }
 
@@ -356,11 +383,20 @@ pub async fn publish(topic: &str, payload: busrt::borrow::Cow<'_>) -> EResult<()
 /// Will panic if RPC not set
 #[inline]
 pub async fn publish_confirmed(topic: &str, payload: busrt::borrow::Cow<'_>) -> EResult<()> {
-    client()
+    tokio::time::timeout(timeout(), publish_confirmed_impl(topic, payload)).await??;
+    Ok(())
+}
+#[inline]
+async fn publish_confirmed_impl(topic: &str, payload: busrt::borrow::Cow<'_>) -> EResult<()> {
+    let Some(op) = client()
         .lock()
         .await
         .publish(topic, payload, QoS::Processed)
-        .await?;
+        .await?
+    else {
+        return Ok(());
+    };
+    op.await??;
     Ok(())
 }
 
@@ -369,6 +405,14 @@ pub async fn publish_confirmed(topic: &str, payload: busrt::borrow::Cow<'_>) -> 
 /// Will panic if RPC not set
 #[inline]
 pub async fn subscribe_oids<'a, M>(masks: M, kind: EventKind) -> EResult<()>
+where
+    M: IntoIterator<Item = &'a OIDMask>,
+{
+    tokio::time::timeout(timeout(), subscribe_oids_impl(masks, kind)).await??;
+    Ok(())
+}
+#[inline]
+async fn subscribe_oids_impl<'a, M>(masks: M, kind: EventKind) -> EResult<()>
 where
     M: IntoIterator<Item = &'a OIDMask>,
 {
@@ -414,6 +458,14 @@ where
 /// Will panic if RPC not set
 #[inline]
 pub async fn exclude_oids<'a, M>(masks: M, kind: EventKind) -> EResult<()>
+where
+    M: IntoIterator<Item = &'a OIDMask>,
+{
+    tokio::time::timeout(timeout(), exclude_oids_impl(masks, kind)).await??;
+    Ok(())
+}
+#[inline]
+async fn exclude_oids_impl<'a, M>(masks: M, kind: EventKind) -> EResult<()>
 where
     M: IntoIterator<Item = &'a OIDMask>,
 {
