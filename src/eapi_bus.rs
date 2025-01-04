@@ -52,6 +52,7 @@ impl ClientAccounting for Arc<Mutex<dyn AsyncClient>> {
     }
 }
 
+#[allow(clippy::ref_option)]
 fn serialize_opt_uuid_as_seq<S>(uuid: &Option<Uuid>, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
