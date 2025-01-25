@@ -509,6 +509,7 @@ impl FullItemState {
             ieid: self.ieid,
             t: self.t,
             node: node_name.to_owned(),
+            force_accept: false,
         }
     }
 }
