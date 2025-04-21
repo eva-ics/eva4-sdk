@@ -6,12 +6,13 @@ use busrt::rpc::{Rpc, RpcClient, RpcEvent, RpcHandlers};
 use busrt::QoS;
 use eva_common::acl::OIDMask;
 use eva_common::common_payloads::ParamsId;
-use eva_common::payload::pack;
+use eva_common::payload::{pack, unpack};
 use eva_common::prelude::*;
 use eva_common::services::Initial;
 use eva_common::services::Registry;
 use once_cell::sync::OnceCell;
 use serde::{ser::SerializeSeq, Deserialize, Deserializer, Serialize, Serializer};
+use std::collections::BTreeMap;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::Mutex;
@@ -256,6 +257,23 @@ pub async fn call0(target: &str, method: &str) -> EResult<RpcEvent> {
 pub async fn call(target: &str, method: &str, params: busrt::borrow::Cow<'_>) -> EResult<RpcEvent> {
     tokio::time::timeout(
         timeout(),
+        rpc_secondary().call(target, method, params, QoS::Processed),
+    )
+    .await?
+    .map_err(Into::into)
+}
+
+/// # Panics
+///
+/// Will panic if RPC not set
+pub async fn call_with_timeout(
+    target: &str,
+    method: &str,
+    params: busrt::borrow::Cow<'_>,
+    timeout: Duration,
+) -> EResult<RpcEvent> {
+    tokio::time::timeout(
+        timeout,
         rpc_secondary().call(target, method, params, QoS::Processed),
     )
     .await?
@@ -618,4 +636,114 @@ pub async fn undeploy_items<T: Serialize>(items: &T) -> EResult<()> {
     )
     .await?;
     Ok(())
+}
+
+#[derive(Serialize, Debug, Clone)]
+pub struct ParamsRunLmacro {
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    args: Vec<Value>,
+    #[serde(skip_serializing_if = "BTreeMap::is_empty")]
+    kwargs: BTreeMap<String, Value>,
+    #[serde(skip_serializing)]
+    wait: Duration,
+    #[serde(skip_serializing)]
+    timeout_if_not_finished: bool,
+}
+
+impl Default for ParamsRunLmacro {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl ParamsRunLmacro {
+    pub fn new() -> Self {
+        Self {
+            args: <_>::default(),
+            kwargs: BTreeMap::new(),
+            wait: eva_common::DEFAULT_TIMEOUT,
+            timeout_if_not_finished: true,
+        }
+    }
+    pub fn arg<V: Serialize>(mut self, arg: V) -> EResult<Self> {
+        self.args.push(to_value(arg)?);
+        Ok(self)
+    }
+    pub fn args<V, I>(mut self, args: I) -> EResult<Self>
+    where
+        V: Serialize,
+        I: IntoIterator<Item = V>,
+    {
+        for arg in args {
+            self.args.push(to_value(arg)?);
+        }
+        Ok(self)
+    }
+    pub fn kwarg<V: Serialize>(mut self, key: impl Into<String>, value: V) -> EResult<Self> {
+        self.kwargs.insert(key.into(), to_value(value)?);
+        Ok(self)
+    }
+    pub fn kwargs<V, I>(mut self, kwargs: I) -> EResult<Self>
+    where
+        V: Serialize,
+        I: IntoIterator<Item = (String, V)>,
+    {
+        for (key, value) in kwargs {
+            self.kwargs.insert(key, to_value(value)?);
+        }
+        Ok(self)
+    }
+    pub fn wait(mut self, wait: Duration) -> Self {
+        self.wait = wait;
+        self
+    }
+    /// Does not return an error if the lmacro action is not finished
+    pub fn allow_unfinished(mut self) -> Self {
+        self.timeout_if_not_finished = false;
+        self
+    }
+}
+
+#[derive(Deserialize, Debug, Clone)]
+struct LmacroActionState {
+    exitcode: Option<i16>,
+    #[serde(default)]
+    finished: bool,
+    #[serde(default)]
+    out: Value,
+    #[serde(default)]
+    err: Value,
+}
+
+pub async fn run_lmacro(i: &OID, params: &ParamsRunLmacro) -> EResult<Value> {
+    #[derive(Serialize)]
+    struct Params<'a> {
+        i: &'a OID,
+        #[allow(clippy::struct_field_names)]
+        params: &'a ParamsRunLmacro,
+        #[serde(serialize_with = "eva_common::tools::serialize_duration_as_f64")]
+        wait: Duration,
+    }
+    let p = Params {
+        i,
+        params,
+        wait: params.wait,
+    };
+    let payload = pack(&p)?;
+    let recommended_timeout = params.wait + Duration::from_millis(500);
+    let timeout = timeout().max(recommended_timeout);
+    let res: LmacroActionState = unpack(
+        call_with_timeout("eva.core", "run", payload.into(), timeout)
+            .await?
+            .payload(),
+    )?;
+    if (!res.finished || res.exitcode.is_none()) && params.timeout_if_not_finished {
+        return Err(Error::timeout());
+    }
+    if let Some(code) = res.exitcode {
+        if code != 0 {
+            return Err(Error::failed(res.err.to_string()));
+        }
+    }
+    Ok(res.out)
 }
