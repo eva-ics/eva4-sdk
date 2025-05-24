@@ -94,6 +94,83 @@ where
     )
 }
 
+/// Helper methods for BUS/RT frame topic
+pub trait BusRtEapiEvent {
+    /// Parse OID from the topic
+    fn parse_oid(&self) -> Option<OID>;
+    /// Get the event kind from the topic
+    fn bus_event(&self) -> BusEventKind;
+    /// Returns true for actual state events (local, remote)
+    fn is_actual_state_event(&self) -> bool {
+        matches!(
+            self.bus_event(),
+            BusEventKind::StateLocal | BusEventKind::StateRemote
+        )
+    }
+}
+
+impl BusRtEapiEvent for busrt::Frame {
+    fn parse_oid(&self) -> Option<OID> {
+        let topic = self.topic()?;
+        if let Some(oid_str) = topic.strip_prefix(LOCAL_STATE_TOPIC) {
+            return OID::from_path(oid_str).ok();
+        }
+        if let Some(oid_str) = topic.strip_prefix(REMOTE_STATE_TOPIC) {
+            return OID::from_path(oid_str).ok();
+        }
+        if let Some(oid_str) = topic.strip_prefix(eva_common::events::REMOTE_ARCHIVE_STATE_TOPIC) {
+            return OID::from_path(oid_str).ok();
+        }
+        None
+    }
+    fn bus_event(&self) -> BusEventKind {
+        let Some(topic) = self.topic() else {
+            return BusEventKind::Other;
+        };
+        if topic.starts_with(eva_common::events::RAW_STATE_TOPIC) {
+            return BusEventKind::StateRaw;
+        }
+        if topic == eva_common::events::RAW_STATE_BULK_TOPIC {
+            return BusEventKind::StateRawBulk;
+        }
+        if topic.starts_with(eva_common::events::LOCAL_STATE_TOPIC) {
+            return BusEventKind::StateLocal;
+        }
+        if topic.starts_with(eva_common::events::REMOTE_STATE_TOPIC) {
+            return BusEventKind::StateRemote;
+        }
+        if topic.starts_with(eva_common::events::REMOTE_ARCHIVE_STATE_TOPIC) {
+            return BusEventKind::StateRemoteArchive;
+        }
+        if topic == eva_common::events::AAA_ACL_TOPIC {
+            return BusEventKind::AaaAcl;
+        }
+        if topic == eva_common::events::AAA_KEY_TOPIC {
+            return BusEventKind::AaaKey;
+        }
+        if topic == eva_common::events::AAA_USER_TOPIC {
+            return BusEventKind::AaaUser;
+        }
+        BusEventKind::Other
+    }
+}
+
+/// Subscription event kind
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum BusEventKind {
+    StateRaw,
+    StateRawBulk,
+    StateLocal,
+    StateRemote,
+    StateRemoteArchive,
+    AaaAcl,
+    AaaKey,
+    AaaUser,
+    Other,
+}
+
+/// Subscription event kind
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum EventKind {

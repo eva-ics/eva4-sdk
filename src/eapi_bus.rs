@@ -10,9 +10,11 @@ use eva_common::payload::{pack, unpack};
 use eva_common::prelude::*;
 use eva_common::services::Initial;
 use eva_common::services::Registry;
+use log::error;
 use once_cell::sync::OnceCell;
 use serde::{ser::SerializeSeq, Deserialize, Deserializer, Serialize, Serializer};
 use std::collections::BTreeMap;
+use std::future::Future;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::Mutex;
@@ -746,4 +748,19 @@ pub async fn run_lmacro(i: &OID, params: &ParamsRunLmacro) -> EResult<Value> {
         }
     }
     Ok(res.out)
+}
+
+/// Spawns a future which is executed after the node core is ready
+pub fn spawn_when_ready<F>(future: F)
+where
+    F: Future + Send + 'static,
+    F::Output: Send + 'static,
+{
+    tokio::spawn(async move {
+        if let Err(e) = wait_core(true).await {
+            error!("Failed to wait for core: {}", e);
+            return;
+        }
+        future.await;
+    });
 }

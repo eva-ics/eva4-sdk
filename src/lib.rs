@@ -11,6 +11,7 @@ pub mod http;
 #[cfg(feature = "pubsub")]
 pub mod pubsub;
 pub mod service;
+pub mod state;
 pub mod types;
 
 pub const EAPI_VERSION: u16 = 1;
@@ -34,6 +35,7 @@ pub mod prelude {
     pub use crate::service::svc_start_signal_handlers;
     pub use crate::service::svc_terminate;
     pub use crate::service::svc_wait_core;
+    pub use crate::service::BusRtEapiEvent as _;
     pub use crate::svc_need_ready;
     pub use crate::svc_rpc_need_ready;
     pub use busrt::client::AsyncClient;

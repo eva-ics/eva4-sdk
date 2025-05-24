@@ -542,6 +542,31 @@ pub struct FullItemStateConnected {
     pub connected: bool,
 }
 
+impl FullItemStateConnected {
+    pub fn from_local_state_event(state: LocalStateEvent, oid: OID) -> Self {
+        Self {
+            oid,
+            status: state.status,
+            value: state.value,
+            act: state.act,
+            ieid: state.ieid,
+            t: state.t,
+            connected: true,
+        }
+    }
+    pub fn from_remote_state_event(state: RemoteStateEvent, oid: OID) -> Self {
+        Self {
+            oid,
+            status: state.status,
+            value: state.value,
+            act: state.act,
+            ieid: state.ieid,
+            t: state.t,
+            connected: state.connected,
+        }
+    }
+}
+
 /// Full item state for remote items, used by HMI services
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
