@@ -706,8 +706,36 @@ impl ParamsRunLmacro {
     }
 }
 
+#[derive(Serialize, Debug, Clone)]
+pub struct ParamsUnitAction {
+    value: Value,
+    #[serde(skip_serializing)]
+    wait: Duration,
+    #[serde(skip_serializing)]
+    timeout_if_not_finished: bool,
+}
+
+impl ParamsUnitAction {
+    pub fn new(value: Value) -> Self {
+        Self {
+            value,
+            wait: eva_common::DEFAULT_TIMEOUT,
+            timeout_if_not_finished: true,
+        }
+    }
+    pub fn wait(mut self, wait: Duration) -> Self {
+        self.wait = wait;
+        self
+    }
+    /// Does not return an error if the unit action is not finished
+    pub fn allow_unfinished(mut self) -> Self {
+        self.timeout_if_not_finished = false;
+        self
+    }
+}
+
 #[derive(Deserialize, Debug, Clone)]
-struct LmacroActionState {
+struct ActionState {
     exitcode: Option<i16>,
     #[serde(default)]
     finished: bool,
@@ -715,6 +743,39 @@ struct LmacroActionState {
     out: Value,
     #[serde(default)]
     err: Value,
+}
+
+pub async fn unit_action(i: &OID, params: &ParamsUnitAction) -> EResult<Value> {
+    #[derive(Serialize)]
+    struct Params<'a> {
+        i: &'a OID,
+        #[allow(clippy::struct_field_names)]
+        params: &'a ParamsUnitAction,
+        #[serde(serialize_with = "eva_common::tools::serialize_duration_as_f64")]
+        wait: Duration,
+    }
+    let p = Params {
+        i,
+        params,
+        wait: params.wait,
+    };
+    let payload = pack(&p)?;
+    let recommended_timeout = params.wait + Duration::from_millis(500);
+    let timeout = timeout().max(recommended_timeout);
+    let res: ActionState = unpack(
+        call_with_timeout("eva.core", "action", payload.into(), timeout)
+            .await?
+            .payload(),
+    )?;
+    if (!res.finished || res.exitcode.is_none()) && params.timeout_if_not_finished {
+        return Err(Error::timeout());
+    }
+    if let Some(code) = res.exitcode {
+        if code != 0 {
+            return Err(Error::failed(res.err.to_string()));
+        }
+    }
+    Ok(res.out)
 }
 
 pub async fn run_lmacro(i: &OID, params: &ParamsRunLmacro) -> EResult<Value> {
@@ -734,7 +795,7 @@ pub async fn run_lmacro(i: &OID, params: &ParamsRunLmacro) -> EResult<Value> {
     let payload = pack(&p)?;
     let recommended_timeout = params.wait + Duration::from_millis(500);
     let timeout = timeout().max(recommended_timeout);
-    let res: LmacroActionState = unpack(
+    let res: ActionState = unpack(
         call_with_timeout("eva.core", "run", payload.into(), timeout)
             .await?
             .payload(),
