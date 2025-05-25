@@ -24,14 +24,17 @@ pub async fn process_bus_frame(frame: &Frame) -> EResult<()> {
     DB.process_bus_frame(frame).await
 }
 
+/// Get a state from the process-global database
 pub async fn get(oid: &OID) -> EResult<Option<State>> {
     DB.get(oid).await
 }
 
+/// Query the process-global database for states matching the given mask and filter
 pub async fn query(query: Query<'_>) -> EResult<Vec<State>> {
     DB.query(query).await
 }
 
+/// Remove a local state from the process-global database
 pub async fn remove_local(oid: &OID) -> Option<State> {
     DB.remove_local(oid).await
 }
@@ -173,7 +176,7 @@ impl Db {
             self.state_db
                 .write()
                 .await
-                .record_state_connected_with_meta(s)?,
+                .record_state_connected_with_meta(s),
         ))
     }
     pub async fn query(&self, query: Query<'_>) -> EResult<Vec<State>> {
@@ -203,7 +206,7 @@ impl Db {
         let mut r_vec = Vec::with_capacity(s_st.len());
         let mut db = self.state_db.write().await;
         for s in s_st {
-            r_vec.push(db.record_state_connected_with_meta(s)?);
+            r_vec.push(db.record_state_connected_with_meta(s));
         }
         Ok(r_vec)
     }
@@ -244,24 +247,23 @@ impl StateDb {
         self.record(State::from(st)).ok();
         Ok(())
     }
-    fn record_state_connected_with_meta(
-        &mut self,
-        mut s: FullItemStateConnectedWithMeta,
-    ) -> EResult<State> {
+    fn record_state_connected_with_meta(&mut self, mut s: FullItemStateConnectedWithMeta) -> State {
         if s.meta.is_none() {
             s.meta = Some(Value::Unit);
         }
-        let st = State(
+        let mut st = State(
             StateInner {
                 st: s.st,
                 meta: s.meta.into(),
             }
             .into(),
         );
-        self.record(st.clone())?;
-        Ok(st)
+        if let Err(e) = self.record(st.clone()) {
+            st = e; // got newer state, use it instead
+        }
+        st
     }
-    fn record(&mut self, state: State) -> EResult<()> {
+    fn record(&mut self, state: State) -> Result<(), State> {
         self.db.append(state, false)
     }
     //fn record_force(&mut self, state: State) -> EResult<()> {
@@ -357,7 +359,9 @@ impl StateMap {
         }
     }
     #[inline]
-    fn append(&mut self, state: State, force: bool) -> EResult<()> {
+    /// in case of if the state is already present as is newer or equal to the existing one,
+    /// returns the eixsting state as an error
+    fn append(&mut self, state: State, force: bool) -> Result<(), State> {
         let tree = self.get_tree_mut(state.oid().kind());
         append_state_rec(tree, state.oid().full_id().split('/'), &state, force)
     }
@@ -503,14 +507,14 @@ fn append_state_rec(
     mut sp: Split<char>,
     state: &State,
     force: bool,
-) -> EResult<()> {
+) -> Result<(), State> {
     macro_rules! process_entry {
         ($entry: expr) => {
             match $entry {
                 std::collections::btree_map::Entry::Occupied(mut e) => {
                     let existing = e.get();
-                    if existing.ieid() >= state.ieid() && !force {
-                        return Err(Error::busy("a newer state state is already recorded"));
+                    if existing.ieid() > state.ieid() && !force {
+                        return Err(existing.clone());
                     }
                     if existing.meta().is_none() || state.meta().is_some() {
                         e.insert(state.clone());
@@ -618,8 +622,7 @@ mod test {
         db.state_db
             .write()
             .await
-            .record_state_connected_with_meta(st)
-            .unwrap();
+            .record_state_connected_with_meta(st);
         ev.value = 456u16.into();
         ev.ieid = IEID::new(1, 1);
         let st = FullItemStateConnected::from_local_state_event(ev.clone(), oid.clone());
@@ -639,8 +642,7 @@ mod test {
         db.state_db
             .write()
             .await
-            .record_state_connected_with_meta(st)
-            .unwrap();
+            .record_state_connected_with_meta(st);
         let st = db.get(&oid).await.unwrap();
         let st = st.expect("state not found");
         assert!(st.oid() == &oid);
