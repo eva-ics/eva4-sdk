@@ -172,6 +172,7 @@ impl Db {
         let Some(s) = s_st.into_iter().next() else {
             return Ok(None);
         };
+        drop(db);
         Ok(Some(
             self.state_db
                 .write()
