@@ -8,6 +8,8 @@ pub mod fs;
 pub mod hmi;
 #[cfg(feature = "http")]
 pub mod http;
+#[cfg(feature = "logicline")]
+pub mod ll;
 #[cfg(feature = "pubsub")]
 pub mod pubsub;
 pub mod service;
@@ -18,6 +20,8 @@ pub const EAPI_VERSION: u16 = 1;
 
 pub mod prelude {
     pub use crate::eapi_bus::{self, AccountingEvent, ClientAccounting};
+    #[cfg(feature = "logicline")]
+    pub use crate::ll;
     pub use crate::service::process_extended_payload;
     pub use crate::service::safe_rpc_call;
     pub use crate::service::svc_block;
