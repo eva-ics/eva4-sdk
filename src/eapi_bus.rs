@@ -6,6 +6,7 @@ use busrt::rpc::{Rpc, RpcClient, RpcEvent, RpcHandlers};
 use busrt::QoS;
 use eva_common::acl::OIDMask;
 use eva_common::common_payloads::ParamsId;
+use eva_common::events::{RawStateEvent, RAW_STATE_TOPIC};
 use eva_common::payload::{pack, unpack};
 use eva_common::prelude::*;
 use eva_common::services::Initial;
@@ -27,6 +28,100 @@ static RPC_SECONDARY: OnceCell<Arc<RpcClient>> = OnceCell::new();
 static REGISTRY: OnceCell<Arc<Registry>> = OnceCell::new();
 static CLIENT: OnceCell<Arc<Mutex<dyn AsyncClient>>> = OnceCell::new();
 static TIMEOUT: OnceCell<Duration> = OnceCell::new();
+
+pub enum LvarCommand<'a> {
+    Set {
+        status: ItemStatus,
+        value: &'a Value,
+    },
+    Reset,
+    Clear,
+    Toggle,
+    Increment,
+    Decrement,
+}
+
+impl LvarCommand<'_> {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            LvarCommand::Set { .. } => "lvar.set",
+            LvarCommand::Reset => "lvar.reset",
+            LvarCommand::Clear => "lvar.clear",
+            LvarCommand::Toggle => "lvar.toggle",
+            LvarCommand::Increment => "lvar.incr",
+            LvarCommand::Decrement => "lvar.decr",
+        }
+    }
+    /// returns new lvar value for increment/decrement, zero for others
+    pub async fn execute(&self, oid: &OID) -> EResult<i64> {
+        #[derive(Serialize)]
+        struct Payload<'a> {
+            i: &'a OID,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            status: Option<ItemStatus>,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            value: Option<&'a Value>,
+        }
+        let payload = Payload {
+            i: oid,
+            status: match self {
+                LvarCommand::Set { status, .. } => Some(*status),
+                LvarCommand::Reset
+                | LvarCommand::Clear
+                | LvarCommand::Toggle
+                | LvarCommand::Increment
+                | LvarCommand::Decrement => None,
+            },
+            value: match self {
+                LvarCommand::Set { value, .. } => Some(value),
+                LvarCommand::Reset
+                | LvarCommand::Clear
+                | LvarCommand::Toggle
+                | LvarCommand::Increment
+                | LvarCommand::Decrement => None,
+            },
+        };
+        let res = call("eva.core", self.as_str(), pack(&payload)?.into()).await?;
+        match self {
+            LvarCommand::Set { .. }
+            | LvarCommand::Reset
+            | LvarCommand::Clear
+            | LvarCommand::Toggle => Ok(0),
+            LvarCommand::Increment | LvarCommand::Decrement => {
+                let value: i64 = unpack(res.payload())?;
+                Ok(value)
+            }
+        }
+    }
+}
+
+pub async fn lvar_set(oid: &OID, status: ItemStatus, value: &Value) -> EResult<()> {
+    LvarCommand::Set { status, value }.execute(oid).await?;
+    Ok(())
+}
+
+pub async fn lvar_reset(oid: &OID) -> EResult<()> {
+    LvarCommand::Reset.execute(oid).await?;
+    Ok(())
+}
+
+pub async fn lvar_clear(oid: &OID) -> EResult<()> {
+    LvarCommand::Clear.execute(oid).await?;
+    Ok(())
+}
+
+pub async fn lvar_toggle(oid: &OID) -> EResult<()> {
+    LvarCommand::Toggle.execute(oid).await?;
+    Ok(())
+}
+
+pub async fn lvar_increment(oid: &OID) -> EResult<i64> {
+    LvarCommand::Increment.execute(oid).await
+}
+
+pub async fn lvar_decrement(oid: &OID) -> EResult<i64> {
+    LvarCommand::Decrement.execute(oid).await
+}
 
 #[async_trait]
 pub trait ClientAccounting {
@@ -374,6 +469,26 @@ async fn subscribe_bulk_impl(topics: &[&str]) -> EResult<()> {
         return Ok(());
     };
     op.await??;
+    Ok(())
+}
+
+#[inline]
+pub async fn publish_item_state(
+    oid: &OID,
+    status: ItemStatus,
+    value: Option<&Value>,
+) -> EResult<()> {
+    let ev = value.map_or_else(
+        || RawStateEvent::new0(status),
+        |v| RawStateEvent::new(status, v),
+    );
+    publish_item_state_event(oid, ev).await
+}
+
+#[inline]
+pub async fn publish_item_state_event(oid: &OID, ev: RawStateEvent<'_>) -> EResult<()> {
+    let topic = format!("{}{}", RAW_STATE_TOPIC, oid.as_path());
+    publish(&topic, pack(&ev)?.into()).await?;
     Ok(())
 }
 
