@@ -555,6 +555,25 @@ where
     service::subscribe_oids(rpc().as_ref(), masks, kind).await
 }
 
+/// # Panics
+///
+/// Will panic if RPC not set
+#[inline]
+pub async fn unsubscribe_oids<'a, M>(masks: M, kind: EventKind) -> EResult<()>
+where
+    M: IntoIterator<Item = &'a OIDMask>,
+{
+    tokio::time::timeout(timeout(), unsubscribe_oids_impl(masks, kind)).await??;
+    Ok(())
+}
+#[inline]
+async fn unsubscribe_oids_impl<'a, M>(masks: M, kind: EventKind) -> EResult<()>
+where
+    M: IntoIterator<Item = &'a OIDMask>,
+{
+    service::unsubscribe_oids(rpc().as_ref(), masks, kind).await
+}
+
 /// Request announce for the specific items, the core will send states to item state topics,
 /// exclusively for the current service. As the method locks the core inventory for updates, it
 /// should be used with caution
