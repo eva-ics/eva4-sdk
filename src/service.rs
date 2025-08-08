@@ -678,6 +678,18 @@ where
     Ok(())
 }
 
+fn panic_handler(info: &std::panic::PanicHookInfo) {
+    eprintln!("PANIC: {}", info);
+    // call panic on critical to gracefully terminate the service
+    poc();
+    // park the thread
+    std::thread::park();
+    // in case if the thread has been externally unparked, will block forever
+    loop {
+        std::thread::sleep(Duration::from_secs(1));
+    }
+}
+
 #[cfg(not(target_os = "windows"))]
 async fn launch<L, LFut>(mut launcher: L, mut initial: services::Initial) -> EResult<()>
 where
@@ -685,6 +697,7 @@ where
     LFut: std::future::Future<Output = EResult<()>>,
 {
     eva_common::self_test();
+    std::panic::set_hook(Box::new(panic_handler));
     let op = Op::new(initial.startup_timeout());
     let eva_dir = initial.eva_dir().to_owned();
     initial.init()?;
