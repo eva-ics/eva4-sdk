@@ -662,13 +662,13 @@ fn apply_current_thread_params(params: &services::RealtimeConfig) -> EResult<()>
     Ok(())
 }
 
-#[cfg(not(target_os = "windows"))]
 pub fn svc_launch<L, LFut>(launcher: L) -> EResult<()>
 where
     L: FnMut(services::Initial) -> LFut,
     LFut: std::future::Future<Output = EResult<()>>,
 {
     let initial = read_initial_sync()?;
+    #[cfg(target_os = "linux")]
     apply_current_thread_params(initial.realtime())?;
     let rt = tokio::runtime::Builder::new_multi_thread()
         .worker_threads(initial.workers() as usize)
