@@ -8,9 +8,14 @@ use eva_common::prelude::*;
 use parking_lot::Mutex;
 use serde::Deserialize;
 use std::collections::HashMap;
+use std::future::Future;
+use std::pin::Pin;
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 use ttl_cache::TtlCache;
 use uuid::Uuid;
+
+eva_common::err_logger!();
 
 const RAW_STATE_CACHE_MAX_CAPACITY: usize = 1_000_000;
 
@@ -325,5 +330,104 @@ impl Action {
     #[inline]
     pub fn op(&self) -> Op {
         Op::for_instant(self.received, self.timeout)
+    }
+}
+
+type LmacroExecutorFn = Box<
+    dyn Fn(actions::LmacroParams) -> Pin<Box<dyn Future<Output = EResult<Value>> + Send>>
+        + Send
+        + Sync,
+>;
+
+pub struct LmacroProcessor {
+    entries: Arc<HashMap<OID, LmacroExecutorFn>>,
+}
+
+impl Clone for LmacroProcessor {
+    fn clone(&self) -> Self {
+        Self {
+            entries: self.entries.clone(),
+        }
+    }
+}
+
+impl LmacroProcessor {
+    pub fn builder() -> LmacroProcessorBuilder {
+        LmacroProcessorBuilder::new()
+    }
+    pub async fn execute(&self, mut action: Action) {
+        action.publish_event_pending().await.log_ef();
+        let Ok(params) = action.take_lmacro_params() else {
+            action
+                .publish_event_failed(
+                    -1,
+                    None,
+                    Some(Value::String("failed to parse lmacro params".to_owned())),
+                )
+                .await
+                .log_ef();
+            return;
+        };
+        let Some(lmx) = self.entries.get(action.oid()) else {
+            action
+                .publish_event_failed(
+                    -1,
+                    None,
+                    Some(Value::String(format!(
+                        "lmacro not found in executor: {}",
+                        action.oid()
+                    ))),
+                )
+                .await
+                .log_ef();
+            return;
+        };
+        let timeout = action.timeout();
+        action.publish_event_running().await.log_ef();
+        match tokio::time::timeout(timeout, lmx(params)).await {
+            Ok(Ok(v)) => {
+                action.publish_event_completed(Some(v)).await.log_ef();
+            }
+            Ok(Err(e)) => {
+                action
+                    .publish_event_failed(e.code(), None, Some(Value::String(e.to_string())))
+                    .await
+                    .log_ef();
+            }
+            Err(_) => {
+                action
+                    .publish_event_failed(
+                        ErrorKind::Timeout as i16,
+                        None,
+                        Some(Value::String("action timeout".to_owned())),
+                    )
+                    .await
+                    .log_ef();
+            }
+        }
+    }
+}
+
+#[derive(Default)]
+pub struct LmacroProcessorBuilder {
+    entries: HashMap<OID, LmacroExecutorFn>,
+}
+
+impl LmacroProcessorBuilder {
+    pub fn new() -> Self {
+        Self::default()
+    }
+    pub fn register<F, Fut>(&mut self, oid: OID, f: F)
+    where
+        F: Fn(actions::LmacroParams) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = EResult<Value>> + Send + 'static,
+    {
+        self.entries
+            .insert(oid, Box::new(move |params| Box::pin(f(params))));
+    }
+    pub fn build(self) -> LmacroProcessor {
+        LmacroProcessor {
+            entries: Arc::new(self.entries),
+        }
     }
 }
