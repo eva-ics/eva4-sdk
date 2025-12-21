@@ -1,7 +1,7 @@
 use crate::eapi_bus;
 /// Controller methods and structures
 use eva_common::actions::{self, ACTION_TOPIC};
-use eva_common::events::{RAW_STATE_TOPIC, RawStateEventOwned};
+use eva_common::events::{RawStateEventOwned, RAW_STATE_TOPIC};
 use eva_common::op::Op;
 use eva_common::payload::pack;
 use eva_common::prelude::*;
