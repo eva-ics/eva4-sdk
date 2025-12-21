@@ -1,7 +1,9 @@
+use crate::eapi_bus;
 /// Controller methods and structures
 use eva_common::actions::{self, ACTION_TOPIC};
-use eva_common::events::{RawStateEventOwned, RAW_STATE_TOPIC};
+use eva_common::events::{RAW_STATE_TOPIC, RawStateEventOwned};
 use eva_common::op::Op;
+use eva_common::payload::pack;
 use eva_common::prelude::*;
 use parking_lot::Mutex;
 use serde::Deserialize;
@@ -170,6 +172,41 @@ pub struct Action {
 }
 
 impl Action {
+    pub async fn publish_event_pending(&self) -> EResult<()> {
+        let event = self.event_pending();
+        eapi_bus::publish(&format_action_topic(&self.i), pack(&event)?.into()).await?;
+        Ok(())
+    }
+    pub async fn publish_event_running(&self) -> EResult<()> {
+        let event = self.event_running();
+        eapi_bus::publish(&format_action_topic(&self.i), pack(&event)?.into()).await?;
+        Ok(())
+    }
+    pub async fn publish_event_completed(&self, out: Option<Value>) -> EResult<()> {
+        let event = self.event_completed(out);
+        eapi_bus::publish(&format_action_topic(&self.i), pack(&event)?.into()).await?;
+        Ok(())
+    }
+    pub async fn publish_event_failed(
+        &self,
+        exitcode: i16,
+        out: Option<Value>,
+        err: Option<Value>,
+    ) -> EResult<()> {
+        let event = self.event_failed(exitcode, out, err);
+        eapi_bus::publish(&format_action_topic(&self.i), pack(&event)?.into()).await?;
+        Ok(())
+    }
+    pub async fn publish_event_canceled(&self) -> EResult<()> {
+        let event = self.event_canceled();
+        eapi_bus::publish(&format_action_topic(&self.i), pack(&event)?.into()).await?;
+        Ok(())
+    }
+    pub async fn publish_event_terminated(&self) -> EResult<()> {
+        let event = self.event_terminated();
+        eapi_bus::publish(&format_action_topic(&self.i), pack(&event)?.into()).await?;
+        Ok(())
+    }
     pub fn event_pending(&self) -> actions::ActionEvent {
         actions::ActionEvent {
             uuid: self.uuid,
