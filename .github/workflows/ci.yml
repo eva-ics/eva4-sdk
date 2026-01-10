@@ -14,7 +14,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: cargo test
-        run: cargo test --verbose --features full,eva-common/openssl-no-fips
+        run: cargo test --verbose --features full,eva-common/openssl-vendored
   fmt:
     runs-on: ubuntu-latest
     steps:
@@ -31,7 +31,7 @@ jobs:
         run: rustup component add clippy
       - name: cargo clippy
         run: |
-          cargo clippy --all-targets --features full,eva-common/openssl-no-fips -- -W clippy::all -W clippy::pedantic \
+          cargo clippy --all-targets --features full,eva-common/openssl-vendored -- -W clippy::all -W clippy::pedantic \
           -A clippy::used-underscore-binding \
           -A clippy::doc_markdown \
           -A clippy::needless_pass_by_value \
