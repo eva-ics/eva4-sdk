@@ -1,33 +1,32 @@
 //! Helper module for EAPI micro-services
 use crate::service::{self, EventKind};
 use async_trait::async_trait;
+use busrt::QoS;
 use busrt::client::AsyncClient;
 use busrt::rpc::{Rpc, RpcClient, RpcEvent, RpcHandlers};
-use busrt::QoS;
 use eva_common::acl::OIDMask;
 use eva_common::common_payloads::ParamsId;
-use eva_common::events::{RawStateEvent, RAW_STATE_TOPIC};
+use eva_common::events::{RAW_STATE_TOPIC, RawStateEvent};
 use eva_common::payload::{pack, unpack};
 use eva_common::prelude::*;
 use eva_common::services::Initial;
 use eva_common::services::Registry;
 use log::error;
-use once_cell::sync::OnceCell;
-use serde::{ser::SerializeSeq, Deserialize, Deserializer, Serialize, Serializer};
+use serde::{Deserialize, Deserializer, Serialize, Serializer, ser::SerializeSeq};
 use std::collections::BTreeMap;
 use std::future::Future;
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 use std::time::Duration;
 use tokio::sync::Mutex;
 use uuid::Uuid;
 
 pub const AAA_REPORT_TOPIC: &str = "AAA/REPORT";
 
-static RPC: OnceCell<Arc<RpcClient>> = OnceCell::new();
-static RPC_SECONDARY: OnceCell<Arc<RpcClient>> = OnceCell::new();
-static REGISTRY: OnceCell<Arc<Registry>> = OnceCell::new();
-static CLIENT: OnceCell<Arc<Mutex<dyn AsyncClient>>> = OnceCell::new();
-static TIMEOUT: OnceCell<Duration> = OnceCell::new();
+static RPC: OnceLock<Arc<RpcClient>> = OnceLock::new();
+static RPC_SECONDARY: OnceLock<Arc<RpcClient>> = OnceLock::new();
+static REGISTRY: OnceLock<Arc<Registry>> = OnceLock::new();
+static CLIENT: OnceLock<Arc<Mutex<dyn AsyncClient>>> = OnceLock::new();
+static TIMEOUT: OnceLock<Duration> = OnceLock::new();
 
 pub enum LvarCommand<'a> {
     Set {
@@ -711,10 +710,10 @@ pub async fn create_items<O: AsRef<OID>>(oids: &[O]) -> EResult<()> {
         let payload = ParamsId {
             i: oid.as_ref().as_str(),
         };
-        if let Err(e) = call("eva.core", "item.create", pack(&payload)?.into()).await {
-            if e.kind() != ErrorKind::ResourceAlreadyExists {
-                return Err(e);
-            }
+        if let Err(e) = call("eva.core", "item.create", pack(&payload)?.into()).await
+            && e.kind() != ErrorKind::ResourceAlreadyExists
+        {
+            return Err(e);
         }
     }
     Ok(())
@@ -904,10 +903,8 @@ pub async fn unit_action(i: &OID, params: &ParamsUnitAction) -> EResult<Value> {
     if (!res.finished || res.exitcode.is_none()) && params.timeout_if_not_finished {
         return Err(Error::timeout());
     }
-    if let Some(code) = res.exitcode {
-        if code != 0 {
-            return Err(Error::failed(res.err.to_string()));
-        }
+    if res.exitcode.is_some_and(|code| code != 0) {
+        return Err(Error::failed(res.err.to_string()));
     }
     Ok(res.out)
 }
@@ -937,10 +934,10 @@ pub async fn run_lmacro(i: &OID, params: &ParamsRunLmacro) -> EResult<Value> {
     if (!res.finished || res.exitcode.is_none()) && params.timeout_if_not_finished {
         return Err(Error::timeout());
     }
-    if let Some(code) = res.exitcode {
-        if code != 0 {
-            return Err(Error::failed(res.err.to_string()));
-        }
+    if let Some(code) = res.exitcode
+        && code != 0
+    {
+        return Err(Error::failed(res.err.to_string()));
     }
     Ok(res.out)
 }

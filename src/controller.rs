@@ -1,7 +1,7 @@
 use crate::eapi_bus;
 /// Controller methods and structures
 use eva_common::actions::{self, ACTION_TOPIC};
-use eva_common::events::{RawStateEventOwned, RAW_STATE_TOPIC};
+use eva_common::events::{RAW_STATE_TOPIC, RawStateEventOwned};
 use eva_common::op::Op;
 use eva_common::payload::pack;
 use eva_common::prelude::*;
@@ -47,20 +47,14 @@ impl RawStateEventPreparedOwned {
             if self.state.value == prev.value {
                 return false;
             }
-            if let Some(delta_v) = self.delta {
-                if let ValueOptionOwned::Value(ref prev_value) = prev.value {
-                    if let ValueOptionOwned::Value(ref current_value) = self.state.value {
-                        if let Ok(prev_value_f) = TryInto::<f64>::try_into(prev_value.clone()) {
-                            if let Ok(current_value_f) =
-                                TryInto::<f64>::try_into(current_value.clone())
-                            {
-                                if (current_value_f - prev_value_f).abs() < delta_v {
-                                    return false;
-                                }
-                            }
-                        }
-                    }
-                }
+            if let Some(delta_v) = self.delta
+                && let ValueOptionOwned::Value(ref prev_value) = prev.value
+                && let ValueOptionOwned::Value(ref current_value) = self.state.value
+                && let Ok(prev_value_f) = TryInto::<f64>::try_into(prev_value.clone())
+                && let Ok(current_value_f) = TryInto::<f64>::try_into(current_value.clone())
+                && (current_value_f - prev_value_f).abs() < delta_v
+            {
+                return false;
             }
         }
         true
@@ -99,10 +93,10 @@ impl RawStateCache {
     ) -> bool {
         if let Some(ttl) = self.ttl {
             let mut cache = self.cache.lock();
-            if let Some(v) = cache.get(oid) {
-                if !v.is_modified(raw_state) {
-                    return false;
-                }
+            if let Some(v) = cache.get(oid)
+                && !v.is_modified(raw_state)
+            {
+                return false;
             }
             cache.insert(
                 oid.clone(),

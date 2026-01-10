@@ -22,6 +22,7 @@ pub mod prelude {
     pub use crate::eapi_bus::{self, AccountingEvent, ClientAccounting};
     #[cfg(feature = "logicline")]
     pub use crate::ll;
+    pub use crate::service::BusRtEapiEvent as _;
     pub use crate::service::process_extended_payload;
     pub use crate::service::safe_rpc_call;
     pub use crate::service::svc_block;
@@ -39,7 +40,6 @@ pub mod prelude {
     pub use crate::service::svc_start_signal_handlers;
     pub use crate::service::svc_terminate;
     pub use crate::service::svc_wait_core;
-    pub use crate::service::BusRtEapiEvent as _;
     pub use crate::svc_need_ready;
     pub use crate::svc_rpc_need_ready;
     pub use busrt::client::AsyncClient;

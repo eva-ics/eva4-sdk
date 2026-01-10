@@ -6,15 +6,14 @@ use eva_common::{
     services,
 };
 pub use logicline::global::{ingress, processor, set_recording};
-pub use logicline::{action, Processor, Snapshot};
+pub use logicline::{Processor, Snapshot, action};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
-
-use once_cell::sync::OnceCell;
+use std::sync::OnceLock;
 
 use crate::hmi::XParamsOwned;
 
-static SNAPSHOT_ACL_MAPPING: OnceCell<SnapshotAclMapping> = OnceCell::new();
+static SNAPSHOT_ACL_MAPPING: OnceLock<SnapshotAclMapping> = OnceLock::new();
 
 pub fn set_snapshot_acl_mapping(mapping: SnapshotAclMapping) -> EResult<()> {
     SNAPSHOT_ACL_MAPPING
@@ -41,19 +40,19 @@ pub(crate) fn api_ll_snapshot(params: Option<Value>, acl: Option<&Acl>) -> EResu
         line_filter: String,
     }
     let mut line_filter = String::new();
-    if let Some(p) = params {
-        if !p.is_unit() {
-            line_filter = Params::deserialize(p)?.line_filter;
-        }
-    };
+    if let Some(p) = params
+        && !p.is_unit()
+    {
+        line_filter = Params::deserialize(p)?.line_filter;
+    }
     if line_filter == "#" || line_filter == "*" {
         line_filter.clear();
     }
     let mut snapshot = logicline::global::snapshot_filtered(|l| l.name().starts_with(&line_filter));
-    if let Some(acl) = acl {
-        if let Some(mapping) = SNAPSHOT_ACL_MAPPING.get() {
-            snapshot = mapping.format_snapshot(snapshot, acl);
-        }
+    if let Some(acl) = acl
+        && let Some(mapping) = SNAPSHOT_ACL_MAPPING.get()
+    {
+        snapshot = mapping.format_snapshot(snapshot, acl);
     }
     pack(&snapshot)
 }

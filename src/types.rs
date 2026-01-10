@@ -351,7 +351,7 @@ impl FromStr for Fill {
                     return Err(Error::invalid_params(format!(
                         "invalid filling type: {}",
                         v
-                    )))
+                    )));
                 }
             })
         }

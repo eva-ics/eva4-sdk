@@ -1,7 +1,8 @@
+use busrt::QoS;
 /// Service basics
 use busrt::client::AsyncClient;
 use busrt::rpc::{Rpc, RpcClient, RpcError, RpcEvent, RpcResult};
-use busrt::QoS;
+use eva_common::SLEEP_STEP;
 use eva_common::acl::OIDMask;
 use eva_common::events::{
     ANY_STATE_TOPIC, LOCAL_STATE_TOPIC, REMOTE_STATE_TOPIC, SERVICE_STATUS_TOPIC,
@@ -12,27 +13,24 @@ use eva_common::prelude::*;
 use eva_common::services;
 use eva_common::services::SERVICE_PAYLOAD_INITIAL;
 use eva_common::services::SERVICE_PAYLOAD_PING;
-use eva_common::SLEEP_STEP;
 pub use eva_sdk_derive::svc_main;
-use lazy_static::lazy_static;
 use log::error;
-use once_cell::sync::OnceCell;
 use parking_lot::Mutex;
 use serde::{Deserialize, Deserializer};
 use std::future::Future;
 use std::io::Read;
 use std::path::Path;
-use std::sync::atomic;
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
+use std::sync::{OnceLock, atomic};
 use std::time::{Duration, Instant};
 use tokio::io::AsyncReadExt;
 #[cfg(not(target_os = "windows"))]
-use tokio::signal::unix::{signal, SignalKind};
+use tokio::signal::unix::{SignalKind, signal};
 use tokio::task::futures::TaskLocalFuture;
 use tokio::time::sleep;
 use uuid::Uuid;
 
-static BUS_ERROR_SUICIDE_TIMEOUT: OnceCell<Duration> = OnceCell::new();
+static BUS_ERROR_SUICIDE_TIMEOUT: OnceLock<Duration> = OnceLock::new();
 
 const ERR_CRITICAL_BUS: &str = "CRITICAL: bus disconnected";
 
@@ -192,9 +190,7 @@ impl EventKind {
     }
 }
 
-lazy_static! {
-    static ref NEED_PANIC: Mutex<Option<Duration>> = <_>::default();
-}
+static NEED_PANIC: LazyLock<Mutex<Option<Duration>>> = LazyLock::new(<_>::default);
 
 /// Will be deprecated soon. Use eva_sdk::eapi instead
 pub async fn subscribe_oids<'a, R, M>(rpc: &R, masks: M, kind: EventKind) -> EResult<()>
@@ -351,12 +347,10 @@ pub(crate) async fn svc_is_core_active(rpc: &RpcClient, timeout: Duration) -> bo
         timeout,
     )
     .await
+        && let Ok(result) = unpack::<TR>(ev.payload())
+        && result.active
     {
-        if let Ok(result) = unpack::<TR>(ev.payload()) {
-            if result.active {
-                return true;
-            }
-        }
+        return true;
     }
     false
 }

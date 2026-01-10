@@ -1,24 +1,24 @@
+use std::sync::LazyLock;
 use std::{borrow::Cow, collections::BTreeMap, str::Split, sync::Arc};
 
 use eva_common::events::{
-    LocalStateEvent, RemoteStateEvent, LOCAL_STATE_TOPIC, REMOTE_ARCHIVE_STATE_TOPIC,
-    REMOTE_STATE_TOPIC,
+    LOCAL_STATE_TOPIC, LocalStateEvent, REMOTE_ARCHIVE_STATE_TOPIC, REMOTE_STATE_TOPIC,
+    RemoteStateEvent,
 };
 
 use crate::eapi_bus;
-use crate::prelude::{pack, unpack, Frame};
+use crate::prelude::{Frame, pack, unpack};
 use crate::types::FullItemStateConnected;
 use eva_common::value::{Value, ValueOptionOwned};
 use eva_common::{
-    acl::{OIDMask, OIDMaskList},
     EResult, Error, ItemKind, OID, OID_MASK_PREFIX_REGEX,
+    acl::{OIDMask, OIDMaskList},
 };
-use eva_common::{ItemStatus, IEID};
-use once_cell::sync::Lazy;
+use eva_common::{IEID, ItemStatus};
 use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
 
-static DB: Lazy<Db> = Lazy::new(<_>::default);
+static DB: LazyLock<Db> = LazyLock::new(<_>::default);
 
 pub async fn process_bus_frame(frame: &Frame) -> EResult<()> {
     DB.process_bus_frame(frame).await
@@ -325,10 +325,10 @@ impl<'a> Filter<'a> {
         self
     }
     fn matches(&self, state: &State) -> bool {
-        if let Some(f) = self.include {
-            if !f.matches(state.oid()) {
-                return false;
-            }
+        if let Some(f) = self.include
+            && !f.matches(state.oid())
+        {
+            return false;
         }
         if let Some(f) = self.exclude {
             !f.matches(state.oid())
@@ -553,7 +553,7 @@ fn append_state_rec(
 mod test {
 
     use crate::types::FullItemStateConnected;
-    use eva_common::{acl::OIDMask, events::LocalStateEvent, value::Value, IEID, OID};
+    use eva_common::{IEID, OID, acl::OIDMask, events::LocalStateEvent, value::Value};
 
     use super::{FullItemStateConnectedWithMeta, Query};
 
@@ -596,12 +596,16 @@ mod test {
         let q = Query::new(&mask).local();
         let states = db.query(q).await.unwrap();
         assert_eq!(states.len(), 2);
-        assert!(states
-            .iter()
-            .any(|s| s.oid() == &"sensor:tests/t1".parse().unwrap()));
-        assert!(states
-            .iter()
-            .any(|s| s.oid() == &"sensor:t5".parse().unwrap()));
+        assert!(
+            states
+                .iter()
+                .any(|s| s.oid() == &"sensor:tests/t1".parse().unwrap())
+        );
+        assert!(
+            states
+                .iter()
+                .any(|s| s.oid() == &"sensor:t5".parse().unwrap())
+        );
     }
 
     #[tokio::test]

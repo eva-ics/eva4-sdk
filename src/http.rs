@@ -1,6 +1,6 @@
 use eva_common::op::Op;
 use eva_common::prelude::*;
-use hyper::{client::HttpConnector, Body, StatusCode, Uri};
+use hyper::{Body, StatusCode, Uri, client::HttpConnector};
 use hyper_tls::HttpsConnector;
 use serde::{Deserialize, Serialize};
 use simple_pool::ResourcePool;
