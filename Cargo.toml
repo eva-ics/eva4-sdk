@@ -1,6 +1,6 @@
 [package]
 name = "eva-sdk"
-version = "0.4.0"
+version = "0.4.1"
 edition = "2024"
 authors = ["Serhij S. <div@altertech.com>"]
 license = "Apache-2.0"
@@ -24,7 +24,7 @@ tokio = { version = "1", features = ["full"] }
 eva-common = { version = "^0.4.1", default-features = false, features = ["acl", "events", "actions",
   "bus-rpc", "services", "registry", "extended-value", "payload", "logger", "common-payloads"] }
 log = "0.4.14"
-logicline = { version = "0.1.8", optional = true }
+logicline = { version = "0.2", optional = true }
 async-channel = "1.7.1"
 bmart = "0.2.2"
 ttl_cache = "0.5.1"
