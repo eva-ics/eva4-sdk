@@ -42,6 +42,7 @@ pub mod prelude {
     pub use crate::service::svc_wait_core;
     pub use crate::svc_need_ready;
     pub use crate::svc_rpc_need_ready;
+    pub use async_trait::async_trait;
     pub use busrt::client::AsyncClient;
     pub use busrt::rpc::{Rpc, RpcClient, RpcError, RpcEvent, RpcHandlers, RpcResult};
     pub use busrt::{Frame, QoS};
