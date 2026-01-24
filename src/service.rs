@@ -664,10 +664,17 @@ where
     let initial = read_initial_sync()?;
     #[cfg(target_os = "linux")]
     apply_current_thread_params(initial.realtime())?;
-    let rt = tokio::runtime::Builder::new_multi_thread()
-        .worker_threads(initial.workers() as usize)
-        .enable_all()
-        .build()?;
+    let worker_threads = usize::try_from(initial.workers())?;
+    let rt = if worker_threads > 1 {
+        tokio::runtime::Builder::new_multi_thread()
+            .worker_threads(initial.workers() as usize)
+            .enable_all()
+            .build()?
+    } else {
+        tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()?
+    };
     rt.block_on(launch(launcher, initial))?;
     Ok(())
 }
