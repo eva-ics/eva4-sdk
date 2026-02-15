@@ -238,17 +238,17 @@ impl<'a> AccountingEvent<'a> {
     }
     #[inline]
     pub fn src(mut self, src: &'a str) -> Self {
-        self.u.replace(src);
+        self.src.replace(src);
         self
     }
     #[inline]
     pub fn svc(mut self, svc: &'a str) -> Self {
-        self.u.replace(svc);
+        self.svc.replace(svc);
         self
     }
     #[inline]
     pub fn subj(mut self, subj: &'a str) -> Self {
-        self.u.replace(subj);
+        self.subj.replace(subj);
         self
     }
     #[inline]
