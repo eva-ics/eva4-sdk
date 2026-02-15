@@ -194,6 +194,7 @@ pub struct AccountingEvent<'a> {
     pub u: Option<&'a str>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub src: Option<&'a str>,
+    /// optional, if not filled, the current service id is used
     #[serde(skip_serializing_if = "Option::is_none")]
     pub svc: Option<&'a str>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -205,6 +206,8 @@ pub struct AccountingEvent<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub note: Option<&'a str>,
     #[serde(default)]
+    /// 0 means OK, negative values mean standard EAPI errors, positive values can be used for
+    /// custom error codes
     pub code: i16,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub err: Option<String>,
