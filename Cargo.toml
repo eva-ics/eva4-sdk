@@ -1,6 +1,6 @@
 [package]
 name = "eva-sdk"
-version = "0.4.5"
+version = "0.4.6"
 edition = "2024"
 authors = ["Serhij S. <div@altertech.com>"]
 license = "Apache-2.0"
@@ -28,8 +28,10 @@ logicline = { version = "0.2", optional = true }
 async-channel = "1.7.1"
 bmart = "0.2.12"
 ttl_cache = "0.5.1"
-hyper = { version = "0.14.18", features = ["client", "http1", "tcp"], optional = true }
-hyper-tls = { version = "0.5.0", optional = true }
+hyper = { version = "1", features = ["client", "http1"], optional = true }
+hyper-util = { version = "0.1", features = ["client-legacy", "http1", "tokio"], optional = true }
+hyper-tls = { version = "0.6", optional = true }
+http-body-util = { version = "0.1", optional = true }
 simple-pool = { version = "0.0.17", optional = true }
 libc = "0.2.126"
 parking_lot = { package = "parking_lot_rt", version = "0.12.1" }
@@ -49,7 +51,7 @@ tokio-fd = "0.3.0"
 controller = []
 pubsub = []
 hmi = []
-http = ["dep:hyper", "dep:hyper-tls", "dep:simple-pool"]
+http = ["dep:hyper", "dep:hyper-util", "dep:hyper-tls", "dep:http-body-util", "dep:simple-pool"]
 full = ["controller", "pubsub", "http", "hmi", "fs", "logicline"]
 logicline = ["dep:logicline", "dep:serde_json", "hmi"]
 fs = ["dep:async-recursion", "dep:glob-match"]

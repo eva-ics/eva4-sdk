@@ -1,13 +1,20 @@
 use eva_common::op::Op;
 use eva_common::prelude::*;
-use hyper::{Body, StatusCode, Uri, client::HttpConnector};
+use http_body_util::{BodyExt, Empty, Full};
+use hyper::body::{Bytes, Incoming};
+use hyper::{StatusCode, Uri};
 use hyper_tls::HttpsConnector;
+use hyper_util::client::legacy::{Client as HyperClient, connect::HttpConnector};
+use hyper_util::rt::TokioExecutor;
 use serde::{Deserialize, Serialize};
 use simple_pool::ResourcePool;
 use std::collections::BTreeMap;
 use std::time::Duration;
 
-type Resource = hyper::Client<HttpsConnector<HttpConnector>>;
+type Resource = HyperClient<HttpsConnector<HttpConnector>, Empty<Bytes>>;
+
+pub type RawResponse = hyper::Response<Incoming>;
+pub type BufferedResponse = hyper::Response<Full<Bytes>>;
 
 pub const MAX_REDIRECTS: usize = 10;
 
@@ -40,7 +47,7 @@ impl Response {
     }
 }
 
-impl TryFrom<Response> for hyper::http::Response<Body> {
+impl TryFrom<Response> for BufferedResponse {
     type Error = Error;
     fn try_from(resp: Response) -> EResult<Self> {
         let mut r = hyper::http::Response::builder();
@@ -48,7 +55,7 @@ impl TryFrom<Response> for hyper::http::Response<Body> {
             r = r.header(header, value);
         }
         r.status(StatusCode::from_u16(resp.status).map_err(Error::failed)?)
-            .body(Body::from(resp.body))
+            .body(Full::new(Bytes::from(resp.body)))
             .map_err(Error::failed)
     }
 }
@@ -58,7 +65,7 @@ impl Client {
         let pool: ResourcePool<Resource> = <_>::default();
         for _ in 0..=pool_size {
             let https = HttpsConnector::new();
-            let client: hyper::Client<_> = hyper::Client::builder()
+            let client = HyperClient::builder(TokioExecutor::new())
                 .pool_idle_timeout(timeout)
                 .build(https);
             pool.append(client);
@@ -80,7 +87,7 @@ impl Client {
         self.follow_redirects = follow;
         self
     }
-    pub async fn get(&self, url: &str) -> EResult<hyper::Response<Body>> {
+    pub async fn get(&self, url: &str) -> EResult<RawResponse> {
         let op = Op::new(self.timeout);
         let mut target_uri: Uri = {
             if url.starts_with("http://") || url.starts_with("https://") {
@@ -141,9 +148,10 @@ impl Client {
                 value.to_str().unwrap_or_default().to_owned(),
             );
         }
-        let body = tokio::time::timeout(op.timeout()?, hyper::body::to_bytes(resp))
+        let body = tokio::time::timeout(op.timeout()?, resp.into_body().collect())
             .await?
             .map_err(Error::io)?
+            .to_bytes()
             .to_vec();
         Ok(Response {
             status,
