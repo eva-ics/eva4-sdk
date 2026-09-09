@@ -1,6 +1,6 @@
 [package]
 name = "eva-sdk"
-version = "0.4.4"
+version = "0.4.5"
 edition = "2024"
 authors = ["Serhij S. <div@altertech.com>"]
 license = "Apache-2.0"
@@ -18,15 +18,15 @@ features = ["full"]
 [dependencies]
 eva-sdk-derive = "0.1.2"
 uuid = { version = "1.1.2", features = ["serde"] }
-busrt = { version = "0.5", features = ["ipc", "rpc"] }
+busrt = { version = "0.5.6", features = ["ipc", "rpc"] }
 serde = { version = "1.0.143", features = ["derive", "rc"] }
 tokio = { version = "1", features = ["full"] }
-eva-common = { version = "^0.4.1", default-features = false, features = ["acl", "events", "actions",
+eva-common = { version = "^0.4.9", default-features = false, features = ["acl", "events", "actions",
   "bus-rpc", "services", "registry", "extended-value", "payload", "logger", "common-payloads"] }
 log = "0.4.14"
 logicline = { version = "0.2", optional = true }
 async-channel = "1.7.1"
-bmart = "0.2.2"
+bmart = "0.2.12"
 ttl_cache = "0.5.1"
 hyper = { version = "0.14.18", features = ["client", "http1", "tcp"], optional = true }
 hyper-tls = { version = "0.5.0", optional = true }
